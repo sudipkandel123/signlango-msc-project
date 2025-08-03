@@ -1,0 +1,219 @@
+Sure! Here’s a **step-by-step instructional script** to build your sign language tutorial web app using FastAPI (backend) and a web frontend. No code is included—just clear steps for you (or your team) to follow in Cursor or another IDE.
+
+## 1. **Project Setup**
+
+- **Organize the Repository**  
+  Structure your project folder, e.g.,  
+  `/backend` for FastAPI, `/frontend` for your chosen web front-end tech (e.g., React, Vue, or plain HTML/CSS/JS).
+
+- **Set Up Version Control**  
+  Initialize a new git repository for collaboration and backups.
+
+## 2. **Backend: FastAPI Service**
+
+- **Set Up FastAPI Environment**  
+  - Create a new virtual environment.
+  - Install FastAPI, Uvicorn, TensorFlow, OpenCV, and MediaPipe.
+  - Prepare endpoints for:
+    - Serving facts and challenges about BSL.
+    - Handling sign detection with uploaded or streamed video frames.
+
+- **Integrate the Pretrained Model**  
+  - Place your trained LSTM sign detection script in the backend.
+  - Refactor the model code into an importable Python module/endpoint.
+  - Ensure the endpoint can receive video frames (POST requests) and return detected signs.
+
+- **Design Quiz/Fact API Endpoints**  
+  - Create endpoints for fetching BSL facts, quiz questions, and submitting answers.
+
+- **Testing**  
+  - Test the model endpoint manually (with curl or Postman) to check correct inference with example frames.
+
+## 3. **Frontend: Interactive Web App**
+
+- **Choose Frontend Stack**  
+  - For the best developer experience, use **React** with Vite, but you can use plain HTML/JS if you prefer.
+
+- **Design the UI**  
+  - Home/Landing page introducing the app and purpose.
+  - **Facts Section:** Visualize facts about BSL; include illustrations, text, and maybe statistics.
+  - **Quiz Section:** Make a simple Q&A interface; show sign images/videos, ask users to choose the meaning, provide instant feedback.
+  - **Sign Detection Demo:**  
+    - Create a page for users to activate webcam.
+    - Capture real-time video input via browser APIs (getUserMedia).
+    - Send video frames (or periodic stills) to the FastAPI `/detect-sign` endpoint via AJAX/websockets.
+    - Display the recognized sign (“hi”, “please”, “okay”) on screen.
+
+- **Gamification Touches**  
+  - Add scoring or progress bars in the quiz.
+  - Optionally track user achievements or sign streaks.
+
+## 4. **Connecting Frontend and Backend**
+
+- **CORS and API Testing**  
+  - Enable CORS in the FastAPI backend to allow frontend requests.
+  - Ensure all endpoints are accessible from the browser (test with the frontend dev server).
+
+- **Real-time Video Processing**  
+  - On the frontend, capture frames from the webcam.
+  - Send frames to the backend sign detection API as JPEG blobs or base64 strings.
+  - Backend processes frames and returns the prediction.
+  - Frontend updates UI with prediction in real-time.
+
+## 5. **Deployment**
+
+- **Backend**  
+  - Deploy the FastAPI app with Uvicorn/Gunicorn (e.g., on Azure, AWS, Heroku, or a VPS).
+  - Ensure necessary dependencies (OpenCV, TensorFlow, MediaPipe) are installed on the host.
+
+- **Frontend**  
+  - Bundle and deploy the frontend (e.g., Netlify, Vercel, S3, or same server as backend).
+  - Point frontend API requests to the production backend URL.
+
+## 6. **Polishing and Extras**
+
+- **Improve Usability**  
+  - Add instructions, tooltips, and error handling.
+  - Optimize performance, especially in video streaming and prediction response times.
+
+- **Testing and Accessibility**  
+  - Test with users, optionally including people familiar with BSL.
+  - Ensure the app is usable for people with disabilities.
+
+### **Summary of Key Features to Implement**
+- **BSL Information Section:** Facts, challenges, and awareness for BSL users.
+- **Quiz Section:** Engaging and educational, with scoring and motivation.
+- **Sign Detection Module:** Real-time sign recognition using webcam, leveraging your pre-trained model.
+
+
+Code for real-time sign recognition using webcam which needs to be integrated in the website 
+
+import cv2
+import numpy as np
+import os
+from matplotlib import pyplot as plt
+import time
+import mediapipe as mp
+import tensorflow as tf
+
+signs = ['hi', 'please', 'excuse_me', 'okay']
+actions = np.array(['hi', 'please', 'excuse_me', 'okay'])
+
+
+mp_holistic = mp.solutions.holistic # Holistic model
+mp_drawing = mp.solutions.drawing_utils # Drawing utilities
+
+def mediapipe_detection(image, model):
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # COLOR-CONVERSION BGR-to-RGB
+    image.flags.writeable = False                  # Convert image to not-writeable
+    results = model.process(image)                 # Make prediction
+    image.flags.writeable = True                   # Convert image to writeable 
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # COLOR-COVERSION RGB-to-BGR
+    return image, results
+
+colors = [(245,117,16), (117,245,16), (16,117,245)]
+def prob_viz(res, actions, input_frame, colors):
+    output_frame = input_frame.copy()
+    for num, prob in enumerate(res):
+        cv2.rectangle(output_frame, (0,60+num*40), (int(prob*100), 90+num*40), colors[num], -1)
+        cv2.putText(output_frame, actions[num], (0, 85+num*40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2, cv2.LINE_AA)
+        
+    return output_frame
+
+def draw_styled_landmarks(image, results):
+    # Draw face connections
+    mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_TESSELATION, 
+                             mp_drawing.DrawingSpec(color=(80,110,10), thickness=1, circle_radius=1), 
+                             mp_drawing.DrawingSpec(color=(80,256,121), thickness=1, circle_radius=1)
+                             ) 
+    # Draw pose connections
+    mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS,
+                             mp_drawing.DrawingSpec(color=(80,22,10), thickness=2, circle_radius=4), 
+                             mp_drawing.DrawingSpec(color=(80,44,121), thickness=2, circle_radius=2)
+                             ) 
+    # Draw left hand connections
+    mp_drawing.draw_landmarks(image, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS, 
+                             mp_drawing.DrawingSpec(color=(121,22,76), thickness=2, circle_radius=4), 
+                             mp_drawing.DrawingSpec(color=(121,44,250), thickness=2, circle_radius=2)
+                             ) 
+    # Draw right hand connections  
+    mp_drawing.draw_landmarks(image, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS, 
+                             mp_drawing.DrawingSpec(color=(245,117,66), thickness=2, circle_radius=4), 
+                             mp_drawing.DrawingSpec(color=(245,66,230), thickness=2, circle_radius=2)
+                             ) 
+    
+def extract_keypoints(results):
+    pose = np.array([[res.x, res.y, res.z, res.visibility] for res in results.pose_landmarks.landmark]).flatten() if results.pose_landmarks else np.zeros(33*4)
+    face = np.array([[res.x, res.y, res.z] for res in results.face_landmarks.landmark]).flatten() if results.face_landmarks else np.zeros(468*3)
+    lh = np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten() if results.left_hand_landmarks else np.zeros(21*3)
+    rh = np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() if results.right_hand_landmarks else np.zeros(21*3)
+    return np.concatenate([pose, face, lh, rh])
+    
+# 1. New detection variables
+sequence = []
+sentence = []
+predictions = []
+threshold = 0.5
+
+model = tf.keras.models.load_model('model.h5')
+model.load_weights('model.weights.h5')
+model.summary()
+
+cap = cv2.VideoCapture(0)
+# Set mediapipe model 
+with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+    while cap.isOpened():
+
+        # Read feed
+        ret, frame = cap.read()
+
+        # Make detections
+        image, results = mediapipe_detection(frame, holistic)
+        #print(results)
+        
+        # Draw landmarks
+        draw_styled_landmarks(image, results)
+        
+        # 2. Prediction logic
+        keypoints = extract_keypoints(results)
+        sequence.append(keypoints)
+        sequence = sequence[-30:]
+        
+        if len(sequence) == 30:
+            res = model.predict(np.expand_dims(sequence, axis=0))[0]
+            #print(actions[np.argmax(res)])
+            predictions.append(np.argmax(res))
+            
+            
+        #3. Viz logic
+            if np.unique(predictions[-10:])[0]==np.argmax(res): 
+                if res[np.argmax(res)] > threshold: 
+                    
+                    if len(sentence) > 0: 
+                        if actions[np.argmax(res)] != sentence[-1]:
+                            sentence.append(actions[np.argmax(res)])
+                    else:
+                        sentence.append(actions[np.argmax(res)])
+
+            if len(sentence) > 5: 
+                sentence = sentence[-5:]
+
+            # Viz probabilities
+            #image = prob_viz(res, actions, image, colors)
+            
+        cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
+        cv2.putText(image, ' '.join(sentence), (3,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        
+        #print(sentence)
+        #word = sentence[-1:]
+        #convert_to_audio(word[0]) if (len(word) != 0) else print("word not detected yet")
+        #convert_to_audio(word[0])
+        
+        # Show to screen
+        cv2.imshow('Realtime LSTM Sign Language Detection', image)
+
+        # Break gracefully
+        if cv2.waitKey(10) & 0xFF == ord('q'):
+            break
+    cap.release()
+    cv2.destroyAllWindows()
