@@ -8,8 +8,9 @@ function Videos() {
     // Load SignBSL widget script
     if (!scriptLoaded.current && !window.signbsl) {
       const script = document.createElement('script');
-      script.src = 'https://www.signbsl.com/embed.js';
+      script.src = 'https://embed.signbsl.com/widgets.js';
       script.async = true;
+      script.charset = 'utf-8';
       
       script.onload = () => {
         if (window.signbsl) {
@@ -37,56 +38,56 @@ function Videos() {
       id: 'hello',
       title: 'Hello',
       description: 'Learn how to sign "Hello" in BSL',
-      vidref: 'hello',
+      vidref: 'cnyia0upyj',
       link: 'https://www.signbsl.com/sign/hello'
     },
     {
       id: 'please',
       title: 'Please',
       description: 'Learn how to sign "Please" in BSL',
-      vidref: 'please',
+      vidref: 'f7a1xiefkh',
       link: 'https://www.signbsl.com/sign/please'
     },
     {
       id: 'excuse_me',
       title: 'Excuse Me',
       description: 'Learn how to sign "Excuse Me" in BSL',
-      vidref: 'excuse_me',
+      vidref: '26ojajoxrq',
       link: 'https://www.signbsl.com/sign/excuse-me'
     },
     {
       id: 'okay',
       title: 'Okay',
       description: 'Learn how to sign "Okay" in BSL',
-      vidref: 'okay',
+      vidref: 'cj1jijzqra',
       link: 'https://www.signbsl.com/sign/okay'
     },
     {
       id: 'thank_you',
       title: 'Thank You',
       description: 'Learn how to sign "Thank You" in BSL',
-      vidref: 'thank-you',
+      vidref: 'b7heyqequm',
       link: 'https://www.signbsl.com/sign/thank-you'
     },
     {
       id: 'sorry',
       title: 'Sorry',
       description: 'Learn how to sign "Sorry" in BSL',
-      vidref: 'sorry',
+      vidref: 'ddt71uvidh',
       link: 'https://www.signbsl.com/sign/sorry'
     },
     {
       id: 'good',
       title: 'Good',
       description: 'Learn how to sign "Good" in BSL',
-      vidref: 'good',
+      vidref: 'z4cxsgwomu',
       link: 'https://www.signbsl.com/sign/good'
     },
     {
       id: 'bad',
       title: 'Bad',
       description: 'Learn how to sign "Bad" in BSL',
-      vidref: 'bad',
+      vidref: 'dwzsrkslrq',
       link: 'https://www.signbsl.com/sign/bad'
     }
   ];
@@ -118,19 +119,21 @@ function Videos() {
               
               <div className="video-container">
                 <div className="video-embed-wrapper">
-                  <iframe
-                    src={`https://www.signbsl.com/sign/${video.vidref}`}
-                    title={`BSL Sign: ${video.title}`}
-                    width="100%"
-                    height="300"
-                    frameBorder="0"
-                    allowFullScreen
+                  <blockquote 
+                    className="signbsldata-embed" 
+                    data-vidref={video.vidref}
                     style={{
                       borderRadius: '10px',
                       border: 'none',
-                      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+                      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
+                      margin: '0',
+                      padding: '0'
                     }}
-                  />
+                  >
+                    <a href={video.link}>
+                      Watch how to sign '{video.title.toLowerCase()}' in British Sign Language
+                    </a>
+                  </blockquote>
                 </div>
               </div>
               

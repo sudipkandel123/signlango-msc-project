@@ -5,6 +5,12 @@ function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [chatMode, setChatMode] = useState('general');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showCommonQuestions, setShowCommonQuestions] = useState(false);
+  const [suggestions, setSuggestions] = useState({});
+  const [commonQuestions, setCommonQuestions] = useState({});
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -14,6 +20,30 @@ function Chat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    // Load suggestions and common questions on component mount
+    loadSuggestions();
+    loadCommonQuestions();
+  }, []);
+
+  const loadSuggestions = async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/chat-suggestions');
+      setSuggestions(response.data.suggestions);
+    } catch (error) {
+      console.error('Error loading suggestions:', error);
+    }
+  };
+
+  const loadCommonQuestions = async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/common-questions');
+      setCommonQuestions(response.data.questions);
+    } catch (error) {
+      console.error('Error loading common questions:', error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +61,8 @@ function Chat() {
 
     try {
       const response = await axios.post('http://localhost:8000/chat', {
-        message: input
+        message: input,
+        type: chatMode
       });
 
       const assistantMessage = {
@@ -54,20 +85,213 @@ function Chat() {
     }
   };
 
+  const handleSuggestionClick = (suggestion) => {
+    setInput(suggestion);
+    setShowSuggestions(false);
+  };
+
+  const handleCommonQuestionClick = async (question) => {
+    const userMessage = {
+      text: question,
+      sender: 'user',
+      timestamp: new Date().toLocaleTimeString()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post('http://localhost:8000/chat', {
+        message: question,
+        type: chatMode
+      });
+
+      const assistantMessage = {
+        text: response.data.response,
+        sender: 'assistant',
+        timestamp: new Date().toLocaleTimeString()
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorMessage = {
+        text: 'Sorry, I encountered an error. Please try again.',
+        sender: 'assistant',
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+  };
+
+  const formatMessage = (text) => {
+    // Convert markdown-style formatting to HTML
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>')
+      .replace(/•/g, '• ');
+  };
+
+  const chatModes = [
+    { id: 'general', name: 'General', description: 'General BSL questions and information' },
+    { id: 'quick_help', name: 'Quick Help', description: 'Quick answers for basic signs' },
+    { id: 'practice', name: 'Practice', description: 'Practice tips and advice' },
+    { id: 'culture', name: 'Culture', description: 'Deaf culture and community' }
+  ];
+
+  const getCategoryName = (category) => {
+    const names = {
+      basic_signs: 'Basic Signs',
+      numbers_colors: 'Numbers & Colors',
+      family: 'Family',
+      grammar: 'Grammar',
+      finger_spelling: 'Finger Spelling',
+      learning: 'Learning',
+      culture: 'Culture',
+      accessibility: 'Accessibility'
+    };
+    return names[category] || category;
+  };
+
   return (
     <div className="chat">
       <div className="card">
-        <h1>BSL Assistant</h1>
-        <p>Ask questions about British Sign Language and get helpful answers</p>
+        <div className="chat-header">
+          <h1>BSL Assistant</h1>
+          <p>Your guide to British Sign Language</p>
+        </div>
 
+        {/* Chat Mode Selector */}
+        <div className="chat-mode-selector">
+          <h3>Choose Chat Mode:</h3>
+          <div className="mode-buttons">
+            {chatModes.map(mode => (
+              <button
+                key={mode.id}
+                className={`mode-btn ${chatMode === mode.id ? 'active' : ''}`}
+                onClick={() => setChatMode(mode.id)}
+                title={mode.description}
+              >
+                <span className="mode-name">{mode.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="quick-actions">
+          <button 
+            className="action-btn"
+            onClick={() => setShowSuggestions(!showSuggestions)}
+          >
+            Suggestions
+          </button>
+          <button 
+            className="action-btn"
+            onClick={() => setShowCommonQuestions(!showCommonQuestions)}
+          >
+            Common Questions
+          </button>
+          <button 
+            className="action-btn"
+            onClick={clearChat}
+          >
+            Clear Chat
+          </button>
+        </div>
+
+        {/* Suggestions Panel */}
+        {showSuggestions && (
+          <div className="suggestions-panel">
+            <h3>Quick Suggestions</h3>
+            <div className="suggestions-grid">
+              {Object.entries(suggestions).map(([category, categorySuggestions]) => (
+                <div key={category} className="suggestion-category">
+                  <h4>{getCategoryName(category)}</h4>
+                  <div className="suggestion-list">
+                    {categorySuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        className="suggestion-btn"
+                        onClick={() => handleSuggestionClick(suggestion)}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Common Questions Panel */}
+        {showCommonQuestions && (
+          <div className="common-questions-panel">
+            <h3>Commonly Asked Questions</h3>
+            <div className="category-filter">
+              <select 
+                value={selectedCategory} 
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="category-select"
+              >
+                <option value="all">All Categories</option>
+                {Object.keys(commonQuestions).map(category => (
+                  <option key={category} value={category}>
+                    {getCategoryName(category)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="questions-grid">
+              {Object.entries(commonQuestions)
+                .filter(([category]) => selectedCategory === 'all' || category === selectedCategory)
+                .map(([category, questions]) => (
+                  <div key={category} className="question-category">
+                    <h4>{getCategoryName(category)}</h4>
+                    <div className="question-list">
+                      {questions.map((q, index) => (
+                        <button
+                          key={index}
+                          className="question-btn"
+                          onClick={() => handleCommonQuestionClick(q.question)}
+                        >
+                          <span className="question-text">{q.question}</span>
+                          <span className="difficulty-badge">{q.difficulty}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Chat Container */}
         <div className="chat-container">
           <div className="chat-messages">
             {messages.length === 0 && (
               <div className="message assistant-message">
                 <div className="message-content">
                   <div className="message-text">
-                    Hello! I'm your BSL assistant. Ask me anything about British Sign Language, 
-                    deaf culture, or how to improve your signing skills.
+                    <strong>Hello! I'm your BSL assistant.</strong><br /><br />
+                    I can help you with:
+                    <ul>
+                      <li>Learning BSL signs and grammar</li>
+                      <li>Practice tips and advice</li>
+                      <li>Deaf culture and community</li>
+                      <li>Accessibility and inclusion</li>
+                      <li>Resources and learning materials</li>
+                    </ul>
+                    <br />
+                    Choose a chat mode above or try the suggestions and common questions!
                   </div>
                   <div className="message-time">Just now</div>
                 </div>
@@ -77,7 +301,10 @@ function Chat() {
             {messages.map((message, index) => (
               <div key={index} className={`message ${message.sender}-message`}>
                 <div className="message-content">
-                  <div className="message-text">{message.text}</div>
+                  <div 
+                    className="message-text"
+                    dangerouslySetInnerHTML={{ __html: formatMessage(message.text) }}
+                  />
                   <div className="message-time">{message.timestamp}</div>
                 </div>
               </div>
@@ -86,7 +313,10 @@ function Chat() {
             {isLoading && (
               <div className="message assistant-message">
                 <div className="message-content">
-                  <div className="typing-indicator">Assistant is typing...</div>
+                  <div className="typing-indicator">
+                    <span>Assistant is typing</span>
+                    <span className="dots">...</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -100,7 +330,7 @@ function Chat() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your question here..."
+                placeholder={`Ask me about BSL in ${chatMode} mode...`}
                 className="chat-input"
                 disabled={isLoading}
               />
@@ -115,15 +345,29 @@ function Chat() {
           </form>
         </div>
 
+        {/* Enhanced Tips */}
         <div className="chat-tips">
           <h3>Tips for Better Conversations</h3>
-          <ul>
-            <li>Ask specific questions about BSL signs and their meanings</li>
-            <li>Inquire about deaf culture and communication etiquette</li>
-            <li>Get help with sign language grammar and structure</li>
-            <li>Learn about accessibility and inclusion practices</li>
-            <li>Ask for practice exercises and learning resources</li>
-          </ul>
+          <div className="tips-grid">
+            <div className="tip-item">
+              <strong>Basic Signs:</strong> Ask about hello, thank you, please, sorry, goodbye
+            </div>
+            <div className="tip-item">
+              <strong>Numbers & Colors:</strong> Learn to count and describe colors in BSL
+            </div>
+            <div className="tip-item">
+              <strong>Family:</strong> Master family member signs
+            </div>
+            <div className="tip-item">
+              <strong>Grammar:</strong> Understand BSL sentence structure and word order
+            </div>
+            <div className="tip-item">
+              <strong>Finger Spelling:</strong> Learn the BSL alphabet and when to use it
+            </div>
+            <div className="tip-item">
+              <strong>Culture:</strong> Explore Deaf culture and communication etiquette
+            </div>
+          </div>
         </div>
       </div>
     </div>

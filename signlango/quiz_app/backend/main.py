@@ -3152,99 +3152,412 @@ async def detect_sign_base64(data: Dict[str, Any]):
 
 @app.post("/chat")
 async def chat_with_bsl_assistant(data: Dict[str, Any]):
-    """Chat with BSL assistant using LLM"""
+    """Enhanced chat with BSL assistant using comprehensive knowledge base"""
     try:
         user_message = data.get("message", "")
+        chat_type = data.get(
+            "type", "general"
+        )  # general, quick_help, practice, culture
+
         if not user_message:
             return {"response": "Please provide a question about BSL.", "error": False}
 
-        # Create a context-aware prompt for BSL questions
-        system_prompt = """You are a helpful assistant specializing in British Sign Language (BSL). 
-        You can help with:
-        - BSL grammar and structure
-        - Sign language techniques and tips
-        - Deaf culture and community
-        - Educational challenges for deaf students
-        - Accessibility and inclusion
-        - BSL resources and learning materials
-        
-        Please provide accurate, helpful, and supportive responses. If you're not sure about something, 
-        say so and suggest where they might find more information."""
+        # Enhanced knowledge base for BSL
+        bsl_knowledge = {
+            # Basic Signs
+            "hello": {
+                "sign": "Wave your hand from side to side at shoulder level with an open palm",
+                "tips": "Make eye contact and smile while signing",
+                "variations": "Formal: more controlled movement, Informal: relaxed wave",
+            },
+            "thank_you": {
+                "sign": "Touch your chin with fingertips and move hand forward and down",
+                "tips": "Show genuine appreciation through facial expression",
+                "variations": "Very formal: two-handed sign, Casual: one-handed",
+            },
+            "please": {
+                "sign": "Place flat hand on chest and move in circular motion",
+                "tips": "Use this to make polite requests",
+                "variations": "More emphasis: larger circular motion",
+            },
+            "sorry": {
+                "sign": "Make a fist and rub it in a circular motion on your chest",
+                "tips": "Show sincerity through facial expression",
+                "variations": "Very sorry: more vigorous rubbing motion",
+            },
+            "goodbye": {
+                "sign": "Wave your hand with palm facing outward",
+                "tips": "Maintain eye contact until the end",
+                "variations": "Formal: controlled wave, Casual: relaxed wave",
+            },
+            # Numbers
+            "numbers": {
+                "1-5": "Use one hand, fingers extended",
+                "6-10": "Use two hands, specific finger combinations",
+                "11-20": "Special signs for teens",
+                "21+": "Combine number signs with finger spelling",
+            },
+            # Colors
+            "colors": {
+                "red": "Point to lips and move hand away",
+                "blue": "Point to throat area",
+                "green": "Point to chest and move hand away",
+                "yellow": "Point to chin and move hand away",
+                "black": "Point to eyebrow and move hand away",
+                "white": "Point to chest and move hand away",
+            },
+            # Family
+            "family": {
+                "mother": "Touch chin with thumb of open hand",
+                "father": "Touch forehead with thumb of open hand",
+                "sister": "Index finger touches nose, then chin",
+                "brother": "Index finger touches nose, then forehead",
+                "baby": "Cradle arms as if holding a baby",
+            },
+        }
 
-        full_prompt = f"{system_prompt}\n\nUser Question: {user_message}\n\nAssistant:"
+        # Enhanced response system
+        user_message_lower = user_message.lower()
 
-        # Use a free LLM API (you can replace this with your preferred LLM service)
-        try:
-            # For now, we'll use a simple response system
-            # In production, you would integrate with OpenAI, Anthropic, or another LLM service
-
-            # Simple keyword-based responses for common BSL questions
-            user_message_lower = user_message.lower()
-
+        # Quick help responses
+        if chat_type == "quick_help":
             if any(word in user_message_lower for word in ["hello", "hi", "greeting"]):
-                response = "In BSL, 'hello' is signed by waving your hand from side to side at shoulder level. It's a friendly, open-palm gesture that's commonly used to greet people."
-
+                response = f"**Hello in BSL:** {bsl_knowledge['hello']['sign']}\n\n**Tip:** {bsl_knowledge['hello']['tips']}\n\n**Variations:** {bsl_knowledge['hello']['variations']}"
             elif any(word in user_message_lower for word in ["thank", "thanks"]):
-                response = "To sign 'thank you' in BSL, touch your chin with your fingertips and move your hand forward and down. It's a polite gesture that shows appreciation."
-
+                response = f"**Thank You in BSL:** {bsl_knowledge['thank_you']['sign']}\n\n**Tip:** {bsl_knowledge['thank_you']['tips']}\n\n**Variations:** {bsl_knowledge['thank_you']['variations']}"
             elif any(word in user_message_lower for word in ["please"]):
-                response = "The BSL sign for 'please' involves placing your flat hand on your chest and moving it in a circular motion. It's used to make polite requests."
-
-            elif any(word in user_message_lower for word in ["grammar", "structure"]):
-                response = "BSL has its own grammar structure that's different from English. It uses topic-comment structure, spatial grammar, and facial expressions to convey meaning. The basic word order is often: Time + Topic + Comment."
-
-            elif any(word in user_message_lower for word in ["finger", "spell"]):
-                response = "BSL uses a two-handed manual alphabet for finger spelling, unlike American Sign Language. Each letter has a specific hand shape and position. This is useful for spelling names, places, or words that don't have established signs."
-
-            elif any(word in user_message_lower for word in ["deaf", "culture"]):
-                response = "Deaf culture is rich and vibrant, with its own traditions, art, literature, and social norms. BSL is central to this cultural identity. Deaf people often prefer to be called 'Deaf' (with a capital D) when referring to their cultural identity."
-
+                response = f"**Please in BSL:** {bsl_knowledge['please']['sign']}\n\n**Tip:** {bsl_knowledge['please']['tips']}\n\n**Variations:** {bsl_knowledge['please']['variations']}"
+            elif any(word in user_message_lower for word in ["sorry"]):
+                response = f"**Sorry in BSL:** {bsl_knowledge['sorry']['sign']}\n\n**Tip:** {bsl_knowledge['sorry']['tips']}\n\n**Variations:** {bsl_knowledge['sorry']['variations']}"
+            elif any(word in user_message_lower for word in ["goodbye", "bye"]):
+                response = f"**Goodbye in BSL:** {bsl_knowledge['goodbye']['sign']}\n\n**Tip:** {bsl_knowledge['goodbye']['tips']}\n\n**Variations:** {bsl_knowledge['goodbye']['variations']}"
             elif any(
-                word in user_message_lower for word in ["learn", "study", "practice"]
+                word in user_message_lower for word in ["number", "numbers", "count"]
             ):
-                response = "To learn BSL effectively, I recommend: 1) Take formal classes with qualified BSL teachers, 2) Practice regularly with deaf people, 3) Use online resources and apps, 4) Join BSL learning communities, 5) Immerse yourself in deaf culture and events."
-
+                response = f"**Numbers in BSL:**\n\n1-5: {bsl_knowledge['numbers']['1-5']}\n6-10: {bsl_knowledge['numbers']['6-10']}\n11-20: {bsl_knowledge['numbers']['11-20']}\n21+: {bsl_knowledge['numbers']['21+']}"
             elif any(
                 word in user_message_lower
-                for word in ["challenge", "difficulty", "problem"]
+                for word in ["color", "colour", "red", "blue", "green"]
             ):
-                response = "Common challenges in learning BSL include: mastering facial expressions, understanding spatial grammar, developing fluency in finger spelling, and becoming comfortable with the visual-spatial nature of the language. Regular practice and immersion help overcome these challenges."
+                response = f"**Colors in BSL:**\n\nRed: {bsl_knowledge['colors']['red']}\nBlue: {bsl_knowledge['colors']['blue']}\nGreen: {bsl_knowledge['colors']['green']}\nYellow: {bsl_knowledge['colors']['yellow']}\nBlack: {bsl_knowledge['colors']['black']}\nWhite: {bsl_knowledge['colors']['white']}"
+            elif any(
+                word in user_message_lower
+                for word in ["family", "mother", "father", "sister", "brother"]
+            ):
+                response = f"**Family Signs in BSL:**\n\nMother: {bsl_knowledge['family']['mother']}\nFather: {bsl_knowledge['family']['father']}\nSister: {bsl_knowledge['family']['sister']}\nBrother: {bsl_knowledge['family']['brother']}\nBaby: {bsl_knowledge['family']['baby']}"
+            else:
+                response = "I can help you with basic BSL signs! Try asking about: hello, thank you, please, sorry, goodbye, numbers, colors, or family members."
+
+                # Practice mode responses
+        elif chat_type == "practice":
+            practice_tips = [
+                "**Practice Tip:** Start with basic signs and build up gradually",
+                "**Eye Contact:** Always maintain eye contact while signing",
+                "**Facial Expressions:** Use facial expressions to convey emotion and meaning",
+                "**Hand Position:** Keep your hands in the signing space (chest to forehead)",
+                "**Repetition:** Practice each sign multiple times until it feels natural",
+                "**Mirror Practice:** Use a mirror to check your hand shapes and movements",
+                "**Video Recording:** Record yourself to identify areas for improvement",
+                "**Practice Partners:** Find someone to practice with regularly",
+            ]
+
+            if any(
+                word in user_message_lower for word in ["tip", "advice", "practice"]
+            ):
+                import random
+
+                response = random.choice(practice_tips)
+            elif any(
+                word in user_message_lower
+                for word in ["difficult", "hard", "challenge"]
+            ):
+                response = "**Common Challenges & Solutions:**\n\n• **Facial Expressions:** Practice in front of a mirror\n• **Hand Coordination:** Start with simple signs and gradually increase complexity\n• **Memory:** Use repetition and create associations\n• **Speed:** Focus on accuracy first, speed will come naturally\n• **Confidence:** Join BSL learning communities for support"
+            else:
+                response = "I'm here to help with your BSL practice! Ask me for tips, advice, or help with specific challenges you're facing."
+
+        # Culture and community responses
+        elif chat_type == "culture":
+            if any(
+                word in user_message_lower for word in ["deaf", "culture", "community"]
+            ):
+                response = "**Deaf Culture & Community:**\n\n• **Cultural Identity:** Many deaf people identify as part of Deaf culture (capital D)\n• **Language:** BSL is central to Deaf cultural identity\n• **Community:** Strong social networks and cultural events\n• **Art:** Rich tradition of Deaf art, poetry, and storytelling\n• **History:** Long history of advocacy for rights and recognition\n• **Values:** Emphasis on visual communication and accessibility"
+            elif any(
+                word in user_message_lower
+                for word in ["etiquette", "manners", "polite"]
+            ):
+                response = "**BSL Communication Etiquette:**\n\n• **Eye Contact:** Essential for communication\n• **Attention:** Tap shoulder or wave to get attention\n• **Interrupting:** Wait for natural pauses\n• **Personal Space:** Respect signing space\n• **Facial Expressions:** Use them to convey meaning\n• **Patience:** Allow time for communication"
+            elif any(word in user_message_lower for word in ["history", "background"]):
+                response = "**BSL History:**\n\n• **Origins:** Developed naturally in deaf communities\n• **Recognition:** Officially recognized in 2003\n• **Education:** Historically banned in schools until recently\n• **Advocacy:** Long fight for recognition and rights\n• **Modern Day:** Growing acceptance and use in education and media"
+            else:
+                response = "I can help you learn about Deaf culture, communication etiquette, and the history of BSL. What would you like to know?"
+
+        # General comprehensive responses
+        else:
+            if any(
+                word in user_message_lower
+                for word in ["grammar", "structure", "syntax"]
+            ):
+                response = "**BSL Grammar Structure:**\n\n• **Topic-Comment:** Often start with the topic, then add details\n• **Spatial Grammar:** Use space to show relationships between things\n• **Facial Expressions:** Essential for questions, emotions, and emphasis\n• **Time Markers:** Indicate when something happened\n• **Classifiers:** Use hand shapes to represent objects and actions\n• **Non-Manual Features:** Eyebrows, mouth, and head movements add meaning"
+
+            elif any(
+                word in user_message_lower for word in ["finger", "spell", "alphabet"]
+            ):
+                response = "**BSL Finger Spelling:**\n\n• **Two-Handed:** Unlike ASL, BSL uses two hands for finger spelling\n• **Purpose:** Spell names, places, or words without established signs\n• **Practice:** Start slowly and build speed gradually\n• **Context:** Often used with other signs for clarity\n• **Tips:** Keep hands steady and clearly visible"
+
+            elif any(
+                word in user_message_lower for word in ["learn", "study", "course"]
+            ):
+                response = "**Learning BSL:**\n\n**Formal Learning:**\n• British Deaf Association (BDA) courses\n• Signature BSL qualifications\n• University courses\n• Local community colleges\n\n**Online Resources:**\n• BSL Zone (online videos)\n• Sign BSL app\n• YouTube channels\n• Online courses\n\n**Practice:**\n• Join BSL learning groups\n• Attend deaf community events\n• Practice with native signers\n• Use video calls for remote practice"
 
             elif any(
                 word in user_message_lower
                 for word in ["resource", "book", "video", "app"]
             ):
-                response = "Great BSL resources include: British Deaf Association (BDA) courses, Signature BSL qualifications, online platforms like BSL Zone, mobile apps like 'Sign BSL', and local deaf community centers. Many universities also offer BSL courses."
-
-            elif any(
-                word in user_message_lower for word in ["interpreter", "translation"]
-            ):
-                response = "BSL interpreters are professionals who facilitate communication between deaf and hearing people. They must be qualified and registered. In the UK, look for interpreters registered with the National Registers of Communication Professionals working with Deaf and Deafblind People (NRCPD)."
+                response = "**BSL Resources:**\n\n**Apps:**\n• Sign BSL (official BSL dictionary)\n• BSL Tutor\n• DeafBooks\n\n**Websites:**\n• British Deaf Association (bda.org.uk)\n• Signature (signature.org.uk)\n• BSL Zone (bslzone.co.uk)\n\n**Books:**\n• 'British Sign Language: A Beginner's Guide'\n• 'BSL Dictionary'\n• 'Deaf in the City' series\n\n**Videos:**\n• BSL Zone documentaries\n• YouTube channels\n• Educational videos"
 
             elif any(
                 word in user_message_lower
-                for word in ["education", "school", "student"]
+                for word in ["interpreter", "translation", "professional"]
             ):
-                response = "Deaf students face various challenges in education, including lack of qualified interpreters, limited access to BSL resources, social isolation, and inadequate accommodations. Inclusive education requires proper support, qualified staff, and accessible learning materials."
+                response = "**BSL Interpreters:**\n\n**Qualifications:**\n• Must be qualified and registered\n• NRCPD registration required\n• Continuous professional development\n\n**When to Use:**\n• Medical appointments\n• Legal proceedings\n• Educational settings\n• Work meetings\n• Public events\n\n**Finding Interpreters:**\n• NRCPD website\n• Local deaf organizations\n• Interpreter agencies\n• Word of mouth recommendations"
+
+            elif any(
+                word in user_message_lower
+                for word in ["education", "school", "student", "child"]
+            ):
+                response = "**Deaf Education:**\n\n**Challenges:**\n• Lack of qualified BSL teachers\n• Limited access to BSL resources\n• Social isolation\n• Inadequate accommodations\n\n**Solutions:**\n• Qualified BSL teachers in schools\n• Accessible learning materials\n• Peer support programs\n• Inclusive classroom practices\n• Parent education and support\n\n**Rights:**\n• Right to BSL education\n• Access to qualified interpreters\n• Reasonable accommodations\n• Equal educational opportunities"
+
+            elif any(
+                word in user_message_lower
+                for word in ["accessibility", "inclusion", "rights"]
+            ):
+                response = "**Accessibility & Inclusion:**\n\n**Legal Rights:**\n• Equality Act 2010\n• Right to BSL interpretation\n• Reasonable adjustments\n• Access to services\n\n**Best Practices:**\n• Provide BSL interpreters\n• Use captions and subtitles\n• Ensure visual accessibility\n• Train staff in basic BSL\n• Create inclusive environments\n\n**Technology:**\n• Video relay services\n• BSL translation apps\n• Accessible websites\n• Visual alert systems"
 
             else:
-                # For questions not covered by keywords, provide a general helpful response
-                response = f"I understand you're asking about BSL: '{user_message}'. While I can provide general information about British Sign Language, for specific or complex questions, I recommend consulting with qualified BSL teachers, the British Deaf Association, or local deaf community organizations. They can provide the most accurate and up-to-date information about BSL and deaf culture."
+                response = f"I understand you're asking about BSL: '{user_message}'. I can help with:\n\n• Basic signs and finger spelling\n• BSL grammar and structure\n• Deaf culture and community\n• Learning resources and courses\n• Practice tips and advice\n• Accessibility and inclusion\n• Educational support\n\nFor specific or complex questions, I recommend consulting qualified BSL teachers or the British Deaf Association."
 
-            return {"response": response, "error": False, "user_message": user_message}
-
-        except Exception as e:
-            return {
-                "response": "I'm having trouble processing your question right now. Please try again or contact a BSL instructor for assistance.",
-                "error": True,
-                "user_message": user_message,
-            }
+        return {
+            "response": response,
+            "error": False,
+            "user_message": user_message,
+            "chat_type": chat_type,
+        }
 
     except Exception as e:
         return {
-            "response": "An error occurred while processing your request. Please try again.",
+            "response": "I'm having trouble processing your question right now. Please try again or contact a BSL instructor for assistance.",
             "error": True,
         }
+
+
+@app.get("/common-questions")
+async def get_common_questions():
+    """Get commonly asked BSL questions"""
+    common_questions = {
+        "basic_signs": [
+            {
+                "question": "How do I sign 'hello' in BSL?",
+                "category": "basic_signs",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "What's the BSL sign for 'thank you'?",
+                "category": "basic_signs",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "How do I sign 'please' in BSL?",
+                "category": "basic_signs",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "What's the sign for 'sorry' in BSL?",
+                "category": "basic_signs",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "How do I sign 'goodbye' in BSL?",
+                "category": "basic_signs",
+                "difficulty": "beginner",
+            },
+        ],
+        "numbers_colors": [
+            {
+                "question": "How do I count from 1 to 10 in BSL?",
+                "category": "numbers_colors",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "What are the signs for colors in BSL?",
+                "category": "numbers_colors",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "How do I sign numbers above 20 in BSL?",
+                "category": "numbers_colors",
+                "difficulty": "intermediate",
+            },
+        ],
+        "family": [
+            {
+                "question": "How do I sign family members in BSL?",
+                "category": "family",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "What's the sign for 'mother' and 'father' in BSL?",
+                "category": "family",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "How do I sign 'sister' and 'brother' in BSL?",
+                "category": "family",
+                "difficulty": "beginner",
+            },
+        ],
+        "grammar": [
+            {
+                "question": "How does BSL grammar work?",
+                "category": "grammar",
+                "difficulty": "intermediate",
+            },
+            {
+                "question": "What's the word order in BSL?",
+                "category": "grammar",
+                "difficulty": "intermediate",
+            },
+            {
+                "question": "How do I ask questions in BSL?",
+                "category": "grammar",
+                "difficulty": "intermediate",
+            },
+        ],
+        "finger_spelling": [
+            {
+                "question": "How do I finger spell in BSL?",
+                "category": "finger_spelling",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "What's the BSL alphabet?",
+                "category": "finger_spelling",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "When should I use finger spelling?",
+                "category": "finger_spelling",
+                "difficulty": "intermediate",
+            },
+        ],
+        "learning": [
+            {
+                "question": "How can I learn BSL effectively?",
+                "category": "learning",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "What are the best BSL learning resources?",
+                "category": "learning",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "How long does it take to learn BSL?",
+                "category": "learning",
+                "difficulty": "beginner",
+            },
+        ],
+        "culture": [
+            {
+                "question": "What is Deaf culture?",
+                "category": "culture",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "What are BSL communication etiquette rules?",
+                "category": "culture",
+                "difficulty": "intermediate",
+            },
+            {
+                "question": "What's the history of BSL?",
+                "category": "culture",
+                "difficulty": "intermediate",
+            },
+        ],
+        "accessibility": [
+            {
+                "question": "How can I make my business more accessible to deaf people?",
+                "category": "accessibility",
+                "difficulty": "intermediate",
+            },
+            {
+                "question": "What are the rights of deaf people in the UK?",
+                "category": "accessibility",
+                "difficulty": "intermediate",
+            },
+            {
+                "question": "How do I find a BSL interpreter?",
+                "category": "accessibility",
+                "difficulty": "intermediate",
+            },
+        ],
+    }
+
+    return {
+        "questions": common_questions,
+        "categories": list(common_questions.keys()),
+        "total_questions": sum(
+            len(questions) for questions in common_questions.values()
+        ),
+    }
+
+
+@app.get("/chat-suggestions")
+async def get_chat_suggestions():
+    """Get chat suggestions and conversation starters"""
+    suggestions = {
+        "quick_help": [
+            "How do I sign 'hello'?",
+            "What's the sign for 'thank you'?",
+            "How do I sign 'please'?",
+            "What's the BSL sign for 'sorry'?",
+            "How do I sign 'goodbye'?",
+            "How do I count from 1 to 10?",
+            "What are the signs for colors?",
+            "How do I sign family members?",
+        ],
+        "practice": [
+            "Give me a practice tip",
+            "What are common challenges in learning BSL?",
+            "How can I improve my signing speed?",
+            "What should I focus on when practicing?",
+            "How do I practice facial expressions?",
+            "What's the best way to practice finger spelling?",
+        ],
+        "culture": [
+            "Tell me about Deaf culture",
+            "What are BSL communication etiquette rules?",
+            "What's the history of BSL?",
+            "How do I be respectful when communicating with deaf people?",
+            "What are common misconceptions about deaf people?",
+        ],
+        "learning": [
+            "How can I learn BSL effectively?",
+            "What are the best BSL learning resources?",
+            "How long does it take to learn BSL?",
+            "Should I take formal classes?",
+            "What apps can help me learn BSL?",
+            "How do I find BSL practice partners?",
+        ],
+        "grammar": [
+            "How does BSL grammar work?",
+            "What's the word order in BSL?",
+            "How do I ask questions in BSL?",
+            "What are spatial markers in BSL?",
+            "How do I use facial expressions in BSL?",
+        ],
+    }
+
+    return {"suggestions": suggestions, "categories": list(suggestions.keys())}
 
 
 @app.post("/reset-detection")
