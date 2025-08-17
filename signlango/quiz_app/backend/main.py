@@ -4519,6 +4519,17 @@ async def reset_detection():
     }
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "model_loaded": model is not None,
+        "mediapipe_loaded": holistic is not None,
+        "timestamp": "2024-01-01T00:00:00Z",
+    }
+
+
 @app.get("/test-model")
 async def test_model():
     """Test the model with sample data"""
