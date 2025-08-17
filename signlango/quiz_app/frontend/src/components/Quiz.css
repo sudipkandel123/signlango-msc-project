@@ -44,12 +44,12 @@
 .loading-spinner h2 {
   color: #333;
   margin-bottom: 1rem;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
 }
 
 .loading-spinner p {
   color: #666;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
 }
 
 /* Error Message */
@@ -61,12 +61,13 @@
 .error-message h2 {
   color: #dc3545;
   margin-bottom: 1rem;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
 }
 
 .error-message p {
   color: #666;
   margin-bottom: 2rem;
+  font-size: 1.2rem;
 }
 
 .error-actions {
@@ -92,12 +93,13 @@
 .no-questions h2 {
   color: #333;
   margin-bottom: 1rem;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
 }
 
 .no-questions p {
   color: #666;
   margin-bottom: 2rem;
+  font-size: 1.2rem;
 }
 
 /* Quiz Setup */
@@ -106,7 +108,7 @@
 }
 
 .quiz-setup h1 {
-  font-size: 2.5rem;
+  font-size: 3rem;
   font-weight: 700;
   color: #333;
   margin-bottom: 1rem;
@@ -117,7 +119,7 @@
 }
 
 .quiz-setup p {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   color: #666;
   margin-bottom: 3rem;
 }
@@ -131,7 +133,7 @@
 .setup-section h3 {
   color: #333;
   margin-bottom: 1.5rem;
-  font-size: 1.3rem;
+  font-size: 1.6rem;
 }
 
 /* Category Grid */
@@ -174,7 +176,7 @@
 
 .category-name {
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
 }
 
 /* Difficulty Grid */
@@ -192,6 +194,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   font-weight: 500;
+  font-size: 1.1rem;
   color: #333;
 }
 
@@ -222,7 +225,7 @@
   align-items: center;
   gap: 0.5rem;
   color: #666;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
 }
 
 .info-icon {
@@ -256,7 +259,7 @@
 .progress-text {
   text-align: center;
   color: #666;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   font-weight: 500;
 }
 
@@ -274,14 +277,14 @@
 }
 
 .stat-label {
-  font-size: 0.8rem;
+  font-size: 1rem;
   color: #666;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .stat-value {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   font-weight: bold;
   color: #333;
 }

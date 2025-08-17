@@ -28,10 +28,6 @@ function Quiz() {
   const categories = [
     { id: 'all', name: 'All Categories', icon: '🎯' },
     { id: 'basics', name: 'Basic Signs', icon: '👋' },
-    { id: 'grammar', name: 'Grammar & Structure', icon: '📚' },
-    { id: 'culture', name: 'Deaf Culture', icon: '🎭' },
-    { id: 'history', name: 'History & Recognition', icon: '📜' },
-    { id: 'technique', name: 'Signing Techniques', icon: '✋' },
     { id: 'family', name: 'Family & Relationships', icon: '👨‍👩‍👧‍👦' },
     { id: 'emotions', name: 'Emotions & Feelings', icon: '😊' },
     { id: 'colors', name: 'Colors', icon: '🎨' },
@@ -314,6 +310,10 @@ function Quiz() {
               <div className="info-item">
                 <span className="info-icon">🏆</span>
                 <span>Track your progress</span>
+              </div>
+              <div className="info-item">
+                <span className="info-icon">💡</span>
+                <span>Try different difficulties for more questions</span>
               </div>
             </div>
 
