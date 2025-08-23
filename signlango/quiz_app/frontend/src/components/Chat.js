@@ -128,6 +128,8 @@ function Chat() {
     setMessages([]);
   };
 
+
+
   const downloadImage = (imageData, prompt) => {
     try {
       // Convert base64 to blob
@@ -179,26 +181,26 @@ function Chat() {
 
         {/* Quick Actions */}
         <div className="quick-actions">
-          <button 
-            className="action-btn"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowCommonQuestions(!showCommonQuestions);
-            }}
-          >
-            Common Questions
-          </button>
-          <button 
-            className="action-btn"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              clearChat();
-            }}
-          >
-            Clear Chat
-          </button>
+                            <button 
+                    className="action-btn"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowCommonQuestions(!showCommonQuestions);
+                    }}
+                  >
+                    Common Questions
+                  </button>
+                  <button 
+                    className="action-btn"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      clearChat();
+                    }}
+                  >
+                    Clear Chat
+                  </button>
         </div>
 
 
@@ -319,33 +321,7 @@ function Chat() {
           </form>
         </div>
 
-        {/* Enhanced Tips */}
-        <div className="chat-tips">
-          <h3>Tips for Better Conversations</h3>
-          <div className="tips-grid">
-            <div className="tip-item">
-              <strong>Basic Signs:</strong> Ask about hello, thank you, please, sorry, goodbye
-            </div>
-            <div className="tip-item">
-              <strong>Numbers & Colors:</strong> Learn to count and describe colors in BSL
-            </div>
-            <div className="tip-item">
-              <strong>Family:</strong> Master family member signs
-            </div>
-            <div className="tip-item">
-              <strong>Grammar:</strong> Understand BSL sentence structure and word order
-            </div>
-            <div className="tip-item">
-              <strong>Finger Spelling:</strong> Learn the BSL alphabet and when to use it
-            </div>
-            <div className="tip-item">
-              <strong>Culture:</strong> Explore Deaf culture and communication etiquette
-            </div>
-            <div className="tip-item">
-              <strong>Image Generation:</strong> Try "generate image of BSL sign for hello" or "create image of sign language alphabet"
-            </div>
-          </div>
-        </div>
+
       </div>
     </div>
   );
