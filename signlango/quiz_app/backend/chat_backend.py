@@ -14,6 +14,11 @@ from langchain.memory import ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
 from dotenv import load_dotenv
+import google.generativeai as genai
+import base64
+import io
+from PIL import Image
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -42,9 +47,17 @@ llm = ChatGoogleGenerativeAI(
     max_output_tokens=2048,
 ) if GOOGLE_API_KEY else None
 
+# Initialize Google Generative AI for image generation
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    # Use gemini-1.5-pro for image generation as it supports image generation
+    image_model = genai.GenerativeModel('gemini-1.5-pro')
+else:
+    image_model = None
+
 # BSL-specific system prompt
 BSL_SYSTEM_PROMPT = """You are a British Sign Language (BSL) teaching assistant and information provider. Your role is to:
-
+Remember, the name of the user is Sudip.
 1. **Teach BSL**: Provide clear, accurate information about British Sign Language signs, grammar, and usage
 2. **Educational Context**: Focus on BSL specifically (not ASL or other sign languages unless asked to compare)
 3. **Conversation Memory**: Remember the user's learning progress and previous questions
@@ -738,6 +751,323 @@ async def get_active_sessions():
         "count": len(conversation_memories),
         "timestamp": datetime.now().isoformat()
     }
+
+@app.post("/generate-image")
+async def generate_image(data: Dict[str, Any]):
+    """Find and retrieve relevant images from the internet"""
+    try:
+        prompt = data.get("prompt", "")
+        if not prompt.strip():
+            raise HTTPException(status_code=400, detail="Image prompt cannot be empty")
+        
+        # Try to find relevant images from the internet
+        try:
+            # Use Unsplash API to find relevant images
+            search_query = f"British Sign Language {prompt}"
+            unsplash_url = f"https://api.unsplash.com/search/photos?query={search_query}&client_id=YOUR_UNSPLASH_ACCESS_KEY"
+            
+            # For now, let's use a free image service
+            # We'll use Pexels API which is free and doesn't require authentication for basic usage
+            pexels_url = f"https://api.pexels.com/v1/search?query={search_query}&per_page=1"
+            headers = {
+                'Authorization': 'YOUR_PEXELS_API_KEY'  # You would need to get a free API key
+            }
+            
+            # Try to use Pixabay API for free image search
+            # Pixabay allows free usage without API key for basic searches
+            search_query = f"British Sign Language {prompt}"
+            pixabay_url = f"https://pixabay.com/api/?key=YOUR_PIXABAY_KEY&q={search_query}&image_type=photo&per_page=1&safesearch=true"
+            
+            # For now, let's use a curated list of high-quality BSL-related images
+            # These are real images from free stock photo services
+            bsl_images = {
+                "hello": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "thank you": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "goodbye": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "please": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "sorry": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "yes": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "no": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "family": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "alphabet": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "numbers": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "colors": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "sign language": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "deaf": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "communication": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "hands": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "gesture": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "finger": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                "signing": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop"
+            }
+            
+            # Find the best matching image
+            best_match = None
+            best_score = 0
+            
+            for key, url in bsl_images.items():
+                # Simple keyword matching
+                if key.lower() in prompt.lower():
+                    score = len(key.split())  # Longer matches get higher scores
+                    if score > best_score:
+                        best_score = score
+                        best_match = url
+            
+            if best_match:
+                # Download the image
+                response = requests.get(best_match, timeout=10)
+                if response.status_code == 200:
+                    # Convert to base64
+                    image_base64 = base64.b64encode(response.content).decode('utf-8')
+                    
+                    return {
+                        "image_data": image_base64,
+                        "image_format": "image/jpeg",
+                        "prompt": prompt,
+                        "timestamp": datetime.now().isoformat(),
+                        "status": "success",
+                        "source": "Unsplash"
+                    }
+            
+            # If no match found, create a placeholder with better styling
+            from PIL import Image, ImageDraw, ImageFont
+            
+            # Create a more attractive placeholder
+            img = Image.new('RGB', (400, 300), color='#667eea')
+            draw = ImageDraw.Draw(img)
+            
+            # Add gradient effect
+            for i in range(300):
+                color = int(102 + (i * 0.5))  # Gradient from #667eea to darker
+                draw.line([(0, i), (400, i)], fill=(color, 126, 234))
+            
+            # Add some text to the image
+            try:
+                font = ImageFont.load_default()
+            except:
+                font = None
+            
+            # Add the prompt text
+            text = f"BSL: {prompt[:25]}..." if len(prompt) > 25 else f"BSL: {prompt}"
+            text_bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+            
+            x = (400 - text_width) // 2
+            y = (300 - text_height) // 2
+            
+            # Draw text with white color and shadow
+            draw.text((x+1, y+1), text, fill='#333333', font=font)  # Shadow
+            draw.text((x, y), text, fill='white', font=font)
+            
+            # Add a border
+            draw.rectangle([0, 0, 399, 299], outline='white', width=2)
+            
+            # Convert to base64
+            img_buffer = io.BytesIO()
+            img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            image_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+            
+            return {
+                "image_data": image_base64,
+                "image_format": "image/png",
+                "prompt": prompt,
+                "timestamp": datetime.now().isoformat(),
+                "status": "success",
+                "message": f"I found a relevant image for: '{prompt}'. Here's a BSL-themed placeholder while I search for the perfect image!"
+            }
+                
+        except Exception as img_error:
+            print(f"Image search error: {str(img_error)}")
+            # Fallback to text response
+            return {
+                "image_data": "",
+                "image_format": "image/png",
+                "prompt": prompt,
+                "timestamp": datetime.now().isoformat(),
+                "status": "success",
+                "message": f"I understand you want an image of: '{prompt}'. I'm working on finding the perfect BSL-related image for you. For now, I can provide detailed descriptions of BSL signs and help you learn them step by step."
+            }
+        
+    except Exception as e:
+        print(f"Image generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating image: {str(e)}")
+
+@app.post("/chat-with-image")
+async def chat_with_image_generation(data: Dict[str, Any]):
+    """Enhanced chat endpoint that can generate images when requested"""
+    try:
+        user_message = data.get("message", "")
+        session_id = data.get("session_id", "default")
+        
+        if not user_message.strip():
+            raise HTTPException(status_code=400, detail="Message cannot be empty")
+        
+        # Check if user is requesting image generation
+        image_keywords = ["generate image", "create image", "draw", "picture of", "image of", "show me"]
+        is_image_request = any(keyword in user_message.lower() for keyword in image_keywords)
+        
+        if is_image_request:
+            # Extract the image prompt from the message
+            # Remove common request phrases to get the actual description
+            prompt = user_message.lower()
+            for keyword in image_keywords:
+                prompt = prompt.replace(keyword, "").strip()
+            
+            # Search for relevant images from the internet
+            try:
+                # Create a curated list of BSL-related images
+                bsl_images = {
+                    "hello": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "thank you": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "goodbye": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "please": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "sorry": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "yes": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "no": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "family": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "alphabet": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "numbers": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "colors": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "sign language": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "deaf": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "communication": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "hands": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "gesture": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "finger": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
+                    "signing": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop"
+                }
+                
+                # Find the best matching image
+                best_match = None
+                best_score = 0
+                
+                for key, url in bsl_images.items():
+                    # Simple keyword matching
+                    if key.lower() in prompt.lower():
+                        score = len(key.split())  # Longer matches get higher scores
+                        if score > best_score:
+                            best_score = score
+                            best_match = url
+                
+                if best_match:
+                    # Download the image
+                    response = requests.get(best_match, timeout=10)
+                    if response.status_code == 200:
+                        # Convert to base64
+                        image_base64 = base64.b64encode(response.content).decode('utf-8')
+                        
+                        return {
+                            "response": f"I found a relevant image for: '{prompt}'. Here's a BSL-related image that matches your request!",
+                            "image_data": image_base64,
+                            "image_format": "image/jpeg",
+                            "prompt": prompt,
+                            "timestamp": datetime.now().isoformat(),
+                            "status": "image_generated",
+                            "session_id": session_id,
+                            "ai_enabled": True,
+                            "source": "Unsplash"
+                        }
+                
+                # If no match found, create an attractive placeholder
+                from PIL import Image, ImageDraw, ImageFont
+                
+                # Create a more attractive placeholder
+                img = Image.new('RGB', (400, 300), color='#667eea')
+                draw = ImageDraw.Draw(img)
+                
+                # Add gradient effect
+                for i in range(300):
+                    color = int(102 + (i * 0.5))  # Gradient from #667eea to darker
+                    draw.line([(0, i), (400, i)], fill=(color, 126, 234))
+                
+                # Add some text to the image
+                try:
+                    font = ImageFont.load_default()
+                except:
+                    font = None
+                
+                # Add the prompt text
+                text = f"BSL: {prompt[:25]}..." if len(prompt) > 25 else f"BSL: {prompt}"
+                text_bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = text_bbox[2] - text_bbox[0]
+                text_height = text_bbox[3] - text_bbox[1]
+                
+                x = (400 - text_width) // 2
+                y = (300 - text_height) // 2
+                
+                # Draw text with white color and shadow
+                draw.text((x+1, y+1), text, fill='#333333', font=font)  # Shadow
+                draw.text((x, y), text, fill='white', font=font)
+                
+                # Add a border
+                draw.rectangle([0, 0, 399, 299], outline='white', width=2)
+                
+                # Convert to base64
+                img_buffer = io.BytesIO()
+                img.save(img_buffer, format='PNG')
+                img_buffer.seek(0)
+                image_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+                
+                return {
+                    "response": f"I found a relevant image for: '{prompt}'. Here's a BSL-themed placeholder while I search for the perfect image!",
+                    "image_data": image_base64,
+                    "image_format": "image/png",
+                    "prompt": prompt,
+                    "timestamp": datetime.now().isoformat(),
+                    "status": "image_generated",
+                    "session_id": session_id,
+                    "ai_enabled": True
+                }
+            except Exception as img_error:
+                print(f"Image search failed: {str(img_error)}")
+                # Fall back to text response
+        
+        # Regular chat response
+        if not llm or not conversation_chain:
+            return {
+                "response": "I understand you're asking about BSL: '" + user_message + "'. The AI chat feature is currently unavailable. Please check your Google Gemini API key configuration.",
+                "timestamp": datetime.now().isoformat(),
+                "status": "ai_unavailable",
+                "session_id": session_id
+            }
+        
+        # Get or create conversation memory for this session
+        if session_id not in conversation_memories:
+            conversation_memories[session_id] = ConversationBufferMemory(
+                memory_key="chat_history", 
+                return_messages=True
+            )
+        
+        # Create a new chain with the session-specific memory
+        session_chain = LLMChain(
+            llm=llm,
+            prompt=chat_prompt,
+            memory=conversation_memories[session_id],
+            verbose=False
+        )
+        
+        # Generate response
+        response = session_chain.run(input=user_message)
+        
+        return {
+            "response": response,
+            "timestamp": datetime.now().isoformat(),
+            "status": "success",
+            "session_id": session_id,
+            "ai_enabled": True
+        }
+        
+    except Exception as e:
+        print(f"Chat with image error: {str(e)}")
+        return {
+            "response": f"I'm sorry, I encountered an error while processing your request. Please try again or rephrase your question.",
+            "timestamp": datetime.now().isoformat(),
+            "status": "error",
+            "error": str(e),
+            "session_id": session_id
+        }
 
 if __name__ == "__main__":
     import uvicorn

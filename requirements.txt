@@ -34,6 +34,9 @@ langchain==0.3.27
 langchain-google-genai==2.0.10
 langchain-core==0.3.74
 
+# Image generation dependencies
+Pillow==10.4.0
+
 # HTTP client for API calls
 requests==2.31.0
 

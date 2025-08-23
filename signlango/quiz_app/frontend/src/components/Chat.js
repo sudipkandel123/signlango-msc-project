@@ -54,7 +54,8 @@ function Chat() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8000/chat', {
+      // Use the enhanced chat endpoint that can handle image generation
+      const response = await axios.post('http://localhost:8000/chat-with-image', {
         message: input,
         type: chatMode
       });
@@ -62,7 +63,10 @@ function Chat() {
       const assistantMessage = {
         text: response.data.response,
         sender: 'assistant',
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: new Date().toLocaleTimeString(),
+        imageData: response.data.image_data,
+        imageFormat: response.data.image_format,
+        prompt: response.data.prompt
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -92,7 +96,7 @@ function Chat() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8000/chat', {
+      const response = await axios.post('http://localhost:8000/chat-with-image', {
         message: question,
         type: chatMode
       });
@@ -100,7 +104,10 @@ function Chat() {
       const assistantMessage = {
         text: response.data.response,
         sender: 'assistant',
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: new Date().toLocaleTimeString(),
+        imageData: response.data.image_data,
+        imageFormat: response.data.image_format,
+        prompt: response.data.prompt
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -119,6 +126,32 @@ function Chat() {
 
   const clearChat = () => {
     setMessages([]);
+  };
+
+  const downloadImage = (imageData, prompt) => {
+    try {
+      // Convert base64 to blob
+      const byteCharacters = atob(imageData);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/png' });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `generated-image-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      alert('Failed to download image. Please try again.');
+    }
   };
 
   const formatMessage = (text) => {
@@ -211,9 +244,10 @@ function Chat() {
                       <li>Deaf culture and community</li>
                       <li>Accessibility and inclusion</li>
                       <li>Resources and learning materials</li>
+                      <li>Generate images related to BSL and sign language</li>
                     </ul>
                     <br />
-                    Try the common questions or ask me anything about BSL!
+                    Try the common questions or ask me anything about BSL! You can also ask me to generate images by saying "generate image of..." or "create image of..."
                   </div>
                   <div className="message-time">Just now</div>
                 </div>
@@ -227,6 +261,24 @@ function Chat() {
                     className="message-text"
                     dangerouslySetInnerHTML={{ __html: formatMessage(message.text) }}
                   />
+                  
+                  {/* Display generated image if available */}
+                  {message.imageData && (
+                    <div className="generated-image-container">
+                      <img 
+                        src={`data:${message.imageFormat};base64,${message.imageData}`}
+                        alt={message.prompt || "Generated image"}
+                        className="generated-image"
+                      />
+                      <button 
+                        className="download-image-btn"
+                        onClick={() => downloadImage(message.imageData, message.prompt)}
+                      >
+                        📥 Download Image
+                      </button>
+                    </div>
+                  )}
+                  
                   <div className="message-time">{message.timestamp}</div>
                 </div>
               </div>
@@ -252,7 +304,7 @@ function Chat() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask me about BSL..."
+                placeholder="Ask me about BSL or generate images..."
                 className="chat-input"
                 disabled={isLoading}
               />
@@ -288,6 +340,9 @@ function Chat() {
             </div>
             <div className="tip-item">
               <strong>Culture:</strong> Explore Deaf culture and communication etiquette
+            </div>
+            <div className="tip-item">
+              <strong>Image Generation:</strong> Try "generate image of BSL sign for hello" or "create image of sign language alphabet"
             </div>
           </div>
         </div>
