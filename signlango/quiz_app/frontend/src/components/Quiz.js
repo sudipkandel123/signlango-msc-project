@@ -55,9 +55,31 @@ function Quiz() {
     { id: 'advanced', name: 'Advanced', color: '#dc3545' }
   ];
 
+  const fetchQuestions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`http://localhost:8000/quiz?category=${selectedCategory}&difficulty=${difficulty}`);
+      const quizData = response.data.questions || response.data;
+      setQuestions(quizData);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching questions:', err);
+      setError('Failed to load quiz questions. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCategory, difficulty]);
+
+  const handleTimeUp = useCallback(() => {
+    setTimerActive(false);
+    setShowResult(true);
+    setStreak(0);
+    setIncorrectAnswers([...incorrectAnswers, questions[currentQuestionIndex]]);
+  }, [incorrectAnswers, questions, currentQuestionIndex]);
+
   useEffect(() => {
     fetchQuestions();
-  }, [selectedCategory, difficulty]);
+  }, [fetchQuestions]);
 
   useEffect(() => {
     let interval = null;
@@ -75,22 +97,9 @@ function Quiz() {
       handleTimeUp();
     }
     return () => clearInterval(interval);
-  }, [timerActive, timeLeft, quizStarted, showResult]);
+  }, [timerActive, timeLeft, quizStarted, showResult, handleTimeUp]);
 
-  const fetchQuestions = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`http://localhost:8000/quiz?category=${selectedCategory}&difficulty=${difficulty}`);
-      const quizData = response.data.questions || response.data;
-      setQuestions(quizData);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching questions:', err);
-      setError('Failed to load quiz questions. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const startQuiz = () => {
     setQuizStarted(true);
@@ -116,38 +125,26 @@ function Quiz() {
   const handleSubmitAnswer = async () => {
     if (selectedAnswer === null || showResult) return;
 
-    try {
-      const response = await axios.post('http://localhost:8000/quiz/submit', {
-        question_id: questions[currentQuestionIndex].id,
-        selected_answer: selectedAnswer
-      });
-
-      const isCorrect = response.data.correct;
-      
-      if (isCorrect) {
-        setScore(score + 1);
-        setStreak(streak + 1);
-        setMaxStreak(Math.max(maxStreak, streak + 1));
-        setCorrectAnswers([...correctAnswers, questions[currentQuestionIndex]]);
-      } else {
-        setStreak(0);
-        setIncorrectAnswers([...incorrectAnswers, questions[currentQuestionIndex]]);
-      }
-
-      setShowResult(true);
-      setTimerActive(false);
-    } catch (err) {
-      console.error('Error submitting answer:', err);
-      setShowResult(true);
+    const currentQuestion = questions[currentQuestionIndex];
+    const correctAnswerIndex = currentQuestion.correct_answer;
+    const correctAnswerText = currentQuestion.options[correctAnswerIndex];
+    const isCorrect = selectedAnswer === correctAnswerText;
+    
+    if (isCorrect) {
+      setScore(score + 1);
+      setStreak(streak + 1);
+      setMaxStreak(Math.max(maxStreak, streak + 1));
+      setCorrectAnswers([...correctAnswers, currentQuestion]);
+    } else {
+      setStreak(0);
+      setIncorrectAnswers([...incorrectAnswers, currentQuestion]);
     }
+
+    setShowResult(true);
+    setTimerActive(false);
   };
 
-  const handleTimeUp = () => {
-    setTimerActive(false);
-    setShowResult(true);
-    setStreak(0);
-    setIncorrectAnswers([...incorrectAnswers, questions[currentQuestionIndex]]);
-  };
+
 
   const handleNextQuestion = () => {
     setSelectedAnswer(null);
@@ -525,8 +522,8 @@ function Quiz() {
           <div className="result-section">
             <div className="result-header">
               <h2>Answer Result</h2>
-              <div className={`result-indicator ${selectedAnswer === currentQuestion.correct_answer ? 'correct' : 'incorrect'}`}>
-                {selectedAnswer === currentQuestion.correct_answer ? '✅ Correct!' : '❌ Incorrect'}
+              <div className={`result-indicator ${selectedAnswer === currentQuestion.options[currentQuestion.correct_answer] ? 'correct' : 'incorrect'}`}>
+                {selectedAnswer === currentQuestion.options[currentQuestion.correct_answer] ? '✅ Correct!' : '❌ Incorrect'}
               </div>
             </div>
 
@@ -537,7 +534,7 @@ function Quiz() {
               </div>
               <div className="result-item">
                 <span className="result-label">Correct Answer:</span>
-                <span className="result-value correct">{currentQuestion.correct_answer}</span>
+                <span className="result-value correct">{currentQuestion.options[currentQuestion.correct_answer]}</span>
               </div>
             </div>
 

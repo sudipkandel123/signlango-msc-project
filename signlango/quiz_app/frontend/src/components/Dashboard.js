@@ -45,8 +45,7 @@ function Dashboard() {
         setChatSuggestions(suggestionsResponse.data.suggestions || []);
         
         // Generate realistic user stats based on facts and quiz data
-        const totalFacts = factsResponse.data.facts?.length || 0;
-        const totalQuestions = quizResponse.data.questions?.length || 0;
+        // Note: totalFacts and totalQuestions are calculated but not used in current implementation
         
         setUserStats(prev => ({
           ...prev,

@@ -66,22 +66,20 @@ function Facts() {
         <div className="facts-grid">
           {facts.map((fact) => (
             <div key={fact.id} className="fact-card">
-              {fact.image && (
-                <div className="fact-image-container">
-                  <img 
-                    src={fact.image} 
-                    alt={fact.title}
-                    className="fact-image"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'block';
-                    }}
-                  />
-                  <div className="fact-image-placeholder" style={{ display: 'none' }}>
-                    <span className="placeholder-icon">{fact.icon}</span>
-                  </div>
+              <div className="fact-image-container">
+                <img 
+                  src={fact.image || '/images/placeholder.jpg'} 
+                  alt={fact.title}
+                  className="fact-image"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'block';
+                  }}
+                />
+                <div className="fact-image-placeholder" style={{ display: 'none' }}>
+                  <span className="placeholder-icon">{fact.icon}</span>
                 </div>
-              )}
+              </div>
               <div className="fact-content">
                 <h3>{fact.title}</h3>
                 <p>{fact.content}</p>

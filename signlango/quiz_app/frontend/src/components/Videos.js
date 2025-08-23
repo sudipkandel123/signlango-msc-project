@@ -31,9 +31,7 @@ function Videos() {
 
 
 
-  const handleVideoClick = (link) => {
-    window.open(link, '_blank');
-  };
+
 
   const signVideos = [
     {
@@ -98,16 +96,18 @@ function Videos() {
     <div className="videos">
       <div className="card">
         <h1>BSL Video Tutorials</h1>
-        <p>Watch professional BSL videos to learn proper signing techniques and improve your skills</p>
+        <p>Watch professional BSL videos to learn authentic British Sign Language gestures and improve your signing skills</p>
 
         <div className="learning-tips">
-          <h3>Learning Tips</h3>
+          <h3>BSL Learning Tips</h3>
           <ul>
-            <li>Watch each video multiple times to understand the hand movements</li>
-            <li>Practice in front of a mirror to check your form</li>
-            <li>Pay attention to facial expressions and body language</li>
-            <li>Practice regularly to build muscle memory</li>
-            <li>Use the Sign Detection feature to test your skills</li>
+            <li><strong>Hand Shape:</strong> Pay close attention to the exact finger positions and hand shape for each sign</li>
+            <li><strong>Movement:</strong> Practice the smooth, fluid motions that are characteristic of BSL</li>
+            <li><strong>Location:</strong> Learn where each sign is performed relative to your body (chin, chest, shoulder, etc.)</li>
+            <li><strong>Facial Expression:</strong> BSL uses facial expressions to convey meaning - practice matching expressions to signs</li>
+            <li><strong>Mirror Practice:</strong> Use a mirror to check your form and ensure you're signing correctly</li>
+            <li><strong>Speed:</strong> Start slowly and gradually increase speed while maintaining accuracy</li>
+            <li><strong>Context:</strong> Practice signs in context to understand when and how to use them</li>
           </ul>
         </div>
 
@@ -139,31 +139,34 @@ function Videos() {
                 </div>
               </div>
               
-              <div className="video-footer">
-                <div className="sign-tips">
-                  <h4>Practice Tips</h4>
-                  <p>
-                    {video.title === 'Hello' && 'Practice the wave motion smoothly. Keep your hand relaxed and make the movement natural.'}
-                    {video.title === 'Please' && 'Focus on the circular motion on your chest. Make sure the movement is gentle and polite.'}
-                    {video.title === 'Excuse Me' && 'Practice the shoulder tap motion. Keep your hand open and make a gentle tapping motion.'}
-                    {video.title === 'Okay' && 'Make sure your thumb points upward clearly. Keep your other fingers relaxed.'}
-                    {video.title === 'Thank You' && 'Practice the chin touch and forward motion. Make the gesture sincere and appreciative.'}
-                    {video.title === 'Sorry' && 'Focus on the circular motion on your chest. Make the gesture show genuine apology.'}
-                    {video.title === 'Good' && 'Practice the forward motion from your chin. Keep your hand flat and movement smooth.'}
-                    {video.title === 'Bad' && 'Practice the downward motion from your chin. Make the movement clear and deliberate.'}
-                    {!['Hello', 'Please', 'Excuse Me', 'Okay', 'Thank You', 'Sorry', 'Good', 'Bad'].includes(video.title) && 'Practice this sign slowly at first, then gradually increase your speed. Focus on accuracy before speed.'}
-                  </p>
+                              <div className="video-footer">
+                  <div className="sign-tips">
+                    <h4>Practice Tips</h4>
+                    <p>
+                      {video.title === 'Hello' && 'Make a gentle wave motion with your hand, palm facing forward. Start from your chin and move outward in a smooth arc. Keep your fingers together and relaxed.'}
+                      {video.title === 'Please' && 'Place your flat hand on your chest and make a small circular motion. The movement should be gentle and polite, showing respect and courtesy.'}
+                      {video.title === 'Excuse Me' && 'Gently tap your shoulder with your fingertips. Keep your hand open and make a light, respectful tapping motion to get attention politely.'}
+                      {video.title === 'Okay' && 'Form a circle with your thumb and index finger, keeping other fingers extended. Hold your hand up with the circle facing forward, showing approval or agreement.'}
+                      {video.title === 'Thank You' && 'Touch your chin with your fingertips, then move your hand forward and down. The gesture should convey genuine gratitude and appreciation.'}
+                      {video.title === 'Sorry' && 'Make a fist and place it on your chest, then make a small circular motion. The movement should express sincere regret and apology.'}
+                      {video.title === 'Good' && 'Start with your hand at your chin, then move it forward and down in a smooth motion. Keep your palm flat and fingers together to show positive approval.'}
+                      {video.title === 'Bad' && 'Start with your hand at your chin, then move it downward and away from your body. The motion should clearly indicate disapproval or something negative.'}
+                      {!['Hello', 'Please', 'Excuse Me', 'Okay', 'Thank You', 'Sorry', 'Good', 'Bad'].includes(video.title) && 'Practice this sign slowly at first, focusing on the correct hand shape and movement. Gradually increase your speed while maintaining accuracy.'}
+                    </p>
+                  </div>
                 </div>
-              </div>
             </div>
           ))}
         </div>
 
         <div className="practice-links">
-          <h3>Ready to Practice?</h3>
-          <p>Now that you've watched the videos, test your skills with our interactive features:</p>
+          <h3>Ready to Practice BSL?</h3>
+          <p>Now that you've learned the basic signs, test your skills with our interactive features:</p>
           <Link to="/sign-detection" className="btn btn-primary">Try Sign Detection</Link>
           <Link to="/quiz" className="btn btn-secondary">Take BSL Quiz</Link>
+          <div className="bsl-note">
+            <p><strong>Remember:</strong> BSL is a complete language with its own grammar and structure. These basic signs are just the beginning of your BSL journey!</p>
+          </div>
         </div>
       </div>
     </div>

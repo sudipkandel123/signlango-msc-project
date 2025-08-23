@@ -5,12 +5,10 @@ function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [chatMode, setChatMode] = useState('general');
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [chatMode] = useState('general');
   const [showCommonQuestions, setShowCommonQuestions] = useState(false);
-  const [suggestions, setSuggestions] = useState({});
   const [commonQuestions, setCommonQuestions] = useState({});
-  const [selectedCategory, setSelectedCategory] = useState('all');
+
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -22,19 +20,11 @@ function Chat() {
   }, [messages]);
 
   useEffect(() => {
-    // Load suggestions and common questions on component mount
-    loadSuggestions();
+    // Load common questions on component mount
     loadCommonQuestions();
   }, []);
 
-  const loadSuggestions = async () => {
-    try {
-      const response = await axios.get('http://localhost:8000/chat-suggestions');
-      setSuggestions(response.data.suggestions);
-    } catch (error) {
-      console.error('Error loading suggestions:', error);
-    }
-  };
+
 
   const loadCommonQuestions = async () => {
     try {
@@ -85,10 +75,7 @@ function Chat() {
     }
   };
 
-  const handleSuggestionClick = (suggestion) => {
-    setInput(suggestion);
-    setShowSuggestions(false);
-  };
+
 
   const handleCommonQuestionClick = async (question) => {
     const userMessage = {
@@ -139,26 +126,9 @@ function Chat() {
       .replace(/•/g, '• ');
   };
 
-  const chatModes = [
-    { id: 'general', name: 'General', description: 'General BSL questions and information' },
-    { id: 'quick_help', name: 'Quick Help', description: 'Quick answers for basic signs' },
-    { id: 'practice', name: 'Practice', description: 'Practice tips and advice' },
-    { id: 'culture', name: 'Culture', description: 'Deaf culture and community' }
-  ];
 
-  const getCategoryName = (category) => {
-    const names = {
-      basic_signs: 'Basic Signs',
-      numbers_colors: 'Numbers & Colors',
-      family: 'Family',
-      grammar: 'Grammar',
-      finger_spelling: 'Finger Spelling',
-      learning: 'Learning',
-      culture: 'Culture',
-      accessibility: 'Accessibility'
-    };
-    return names[category] || category;
-  };
+
+
 
   return (
     <div className="chat">
@@ -168,31 +138,10 @@ function Chat() {
           <p>Your guide to British Sign Language</p>
         </div>
 
-        {/* Chat Mode Selector */}
-        <div className="chat-mode-selector">
-          <h3>Choose Chat Mode:</h3>
-          <div className="mode-buttons">
-            {chatModes.map(mode => (
-              <button
-                key={mode.id}
-                className={`mode-btn ${chatMode === mode.id ? 'active' : ''}`}
-                onClick={() => setChatMode(mode.id)}
-                title={mode.description}
-              >
-                <span className="mode-name">{mode.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+
 
         {/* Quick Actions */}
         <div className="quick-actions">
-          <button 
-            className="action-btn"
-            onClick={() => setShowSuggestions(!showSuggestions)}
-          >
-            Suggestions
-          </button>
           <button 
             className="action-btn"
             onClick={() => setShowCommonQuestions(!showCommonQuestions)}
@@ -207,69 +156,27 @@ function Chat() {
           </button>
         </div>
 
-        {/* Suggestions Panel */}
-        {showSuggestions && (
-          <div className="suggestions-panel">
-            <h3>Quick Suggestions</h3>
-            <div className="suggestions-grid">
-              {Object.entries(suggestions).map(([category, categorySuggestions]) => (
-                <div key={category} className="suggestion-category">
-                  <h4>{getCategoryName(category)}</h4>
-                  <div className="suggestion-list">
-                    {categorySuggestions.map((suggestion, index) => (
-                      <button
-                        key={index}
-                        className="suggestion-btn"
-                        onClick={() => handleSuggestionClick(suggestion)}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+
 
         {/* Common Questions Panel */}
         {showCommonQuestions && (
           <div className="common-questions-panel">
             <h3>Commonly Asked Questions</h3>
-            <div className="category-filter">
-              <select 
-                value={selectedCategory} 
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="category-select"
-              >
-                <option value="all">All Categories</option>
-                {Object.keys(commonQuestions).map(category => (
-                  <option key={category} value={category}>
-                    {getCategoryName(category)}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div className="questions-grid">
-              {Object.entries(commonQuestions)
-                .filter(([category]) => selectedCategory === 'all' || category === selectedCategory)
-                .map(([category, questions]) => (
-                  <div key={category} className="question-category">
-                    <h4>{getCategoryName(category)}</h4>
-                    <div className="question-list">
-                      {questions.map((q, index) => (
-                        <button
-                          key={index}
-                          className="question-btn"
-                          onClick={() => handleCommonQuestionClick(q.question)}
-                        >
-                          <span className="question-text">{q.question}</span>
-                          <span className="difficulty-badge">{q.difficulty}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="question-category">
+                <h4>General BSL Questions</h4>
+                <div className="question-list">
+                  {Array.isArray(commonQuestions) && commonQuestions.map((q, index) => (
+                    <button
+                      key={index}
+                      className="question-btn"
+                      onClick={() => handleCommonQuestionClick(q.question)}
+                    >
+                      <span className="question-text">{q.question}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -291,7 +198,7 @@ function Chat() {
                       <li>Resources and learning materials</li>
                     </ul>
                     <br />
-                    Choose a chat mode above or try the suggestions and common questions!
+                    Try the common questions or ask me anything about BSL!
                   </div>
                   <div className="message-time">Just now</div>
                 </div>
@@ -330,7 +237,7 @@ function Chat() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={`Ask me about BSL in ${chatMode} mode...`}
+                placeholder="Ask me about BSL..."
                 className="chat-input"
                 disabled={isLoading}
               />
