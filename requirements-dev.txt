@@ -1,0 +1,42 @@
+# Development requirements for signlango-msc-project
+# Install with: pip install -r requirements-dev.txt
+
+# Include all production dependencies
+-r requirements.txt
+
+# Development and testing tools
+pytest==8.0.2
+pytest-asyncio==0.23.5
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+httpx==0.27.0
+
+# Code formatting and linting
+black==24.2.0
+flake8==7.0.0
+isort==5.13.2
+mypy==1.8.0
+
+# Documentation
+sphinx==7.2.6
+sphinx-rtd-theme==2.0.0
+
+# Jupyter notebooks for development
+jupyter==1.0.0
+ipykernel==6.29.5
+notebook==7.0.7
+
+# Debugging tools
+ipdb==0.13.13
+debugpy==1.8.0
+
+# Pre-commit hooks
+pre-commit==3.6.2
+
+# Type checking
+types-requests==2.31.0.20240218
+types-PyYAML==6.0.12.12
+
+# Performance profiling
+memory-profiler==0.61.0
+line-profiler==4.1.2 

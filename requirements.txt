@@ -1,2 +1,73 @@
-mediapipe
-opencv-python
+# Core dependencies for sign language detection
+mediapipe==0.10.5
+opencv-python==4.11.0.86
+numpy==1.24.3
+
+# Machine Learning Framework (Mac M1 compatible)
+tensorflow-macos==2.15.0
+
+# Web framework for the quiz app backend
+fastapi==0.116.1
+uvicorn==0.35.0
+
+# Additional dependencies for the quiz app
+python-multipart==0.0.20
+python-jose==3.5.0
+passlib==1.7.4
+python-dotenv==1.1.1
+pydantic==2.8.2
+
+# Data processing and visualization
+matplotlib==3.10.5
+scipy==1.16.1
+
+# Development and testing (optional)
+ipykernel==6.29.5
+
+# Additional dependencies
+protobuf==3.20.3
+typing-extensions==4.14.1
+
+# AI Chat Dependencies (LangChain + Google Gemini)
+google-generativeai==0.8.5
+langchain==0.3.27
+langchain-google-genai==2.0.10
+langchain-core==0.3.74
+
+# HTTP client for API calls
+requests==2.31.0
+
+# CORS middleware
+fastapi-cors==0.0.6
+
+# JSON handling
+orjson==3.10.3
+
+# Environment and configuration
+python-decouple==3.8
+
+# Logging and monitoring
+loguru==0.7.2
+
+# Data validation
+marshmallow==3.21.0
+
+# Async support
+aiofiles==23.2.1
+
+# Image processing
+Pillow==10.4.0
+
+# Database support (if needed later)
+sqlalchemy==2.0.27
+alembic==1.13.1
+
+# Testing dependencies
+pytest==8.0.2
+pytest-asyncio==0.23.5
+httpx==0.27.0
+
+# Development tools
+black==24.2.0
+flake8==7.0.0
+isort==5.13.2

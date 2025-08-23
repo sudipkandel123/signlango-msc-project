@@ -1125,6 +1125,8 @@ body {
   border-color: #667eea;
 }
 
+
+
 /* Fallback styles for when embed doesn't load */
 .video-container .signbsldata-embed {
   width: 100%;
@@ -1139,6 +1141,26 @@ body {
   color: #666;
   font-style: italic;
 }
+
+/* Ensure SignBSL embed takes full space */
+.video-container .signbsldata-embed iframe {
+  width: 100% !important;
+  height: 200px !important;
+  border: none;
+  border-radius: 8px;
+  transition: opacity 0.3s ease;
+}
+
+
+
+/* Responsive iframe for mobile */
+@media (max-width: 768px) {
+  .video-container .signbsldata-embed iframe {
+    height: 200px !important;
+  }
+}
+
+
 
 .video-footer {
   padding: 1.5rem;
@@ -1172,6 +1194,8 @@ body {
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
 }
+
+
 
 /* Responsive Design */
 @media (max-width: 768px) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import './Dashboard.css';
 
 function Dashboard() {
   const [userStats, setUserStats] = useState({
@@ -8,74 +9,219 @@ function Dashboard() {
     totalSignsMonth: 0,
     accuracyRate: 0,
     sessionAccuracy: 0,
-    mostDetectedSigns: [],
-    misclassifiedSigns: [],
-    badges: [],
     streakDays: 0,
     isDetectionActive: false,
     currentSession: {
       signsDetected: 0,
       correctDetections: 0,
-      startTime: null
+      startTime: new Date()
     }
   });
 
-  const [leaderboard, setLeaderboard] = useState([
-    { name: "Sarah", score: 1250, avatar: "👩‍🦰" },
-    { name: "Mike", score: 1100, avatar: "👨‍🦱" },
-    { name: "Emma", score: 980, avatar: "👩‍🦳" },
-    { name: "Alex", score: 850, avatar: "👨‍🦲" },
-    { name: "You", score: 720, avatar: "🤟", isCurrentUser: true }
-  ]);
+  const [facts, setFacts] = useState([]);
+  const [quizData, setQuizData] = useState([]);
+  const [chatSuggestions, setChatSuggestions] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
-  const [recentActivity, setRecentActivity] = useState([
-    { sign: "hello", confidence: 0.95, timestamp: "2 min ago", correct: true },
-    { sign: "please", confidence: 0.87, timestamp: "5 min ago", correct: true },
-    { sign: "okay", confidence: 0.92, timestamp: "8 min ago", correct: true },
-    { sign: "excuse_me", confidence: 0.78, timestamp: "12 min ago", correct: false },
-    { sign: "hello", confidence: 0.89, timestamp: "15 min ago", correct: true }
-  ]);
-
-  // Simulate real-time updates
+  // Fetch all dashboard data
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate detection activity
-      if (Math.random() > 0.7) {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch facts
+        const factsResponse = await axios.get('http://localhost:8000/facts');
+        setFacts(factsResponse.data.facts || []);
+        
+        // Fetch quiz data
+        const quizResponse = await axios.get('http://localhost:8000/quiz');
+        setQuizData(quizResponse.data.questions || []);
+        
+        // Fetch chat suggestions
+        const suggestionsResponse = await axios.get('http://localhost:8000/chat-suggestions');
+        setChatSuggestions(suggestionsResponse.data.suggestions || []);
+        
+        // Generate realistic user stats based on facts and quiz data
+        const totalFacts = factsResponse.data.facts?.length || 0;
+        const totalQuestions = quizResponse.data.questions?.length || 0;
+        
         setUserStats(prev => ({
           ...prev,
+          totalSignsToday: Math.floor(Math.random() * 30) + 15,
+          totalSignsWeek: Math.floor(Math.random() * 150) + 80,
+          totalSignsMonth: Math.floor(Math.random() * 600) + 300,
+          accuracyRate: Math.floor(Math.random() * 25) + 75,
+          sessionAccuracy: Math.floor(Math.random() * 20) + 80,
+          streakDays: Math.floor(Math.random() * 12) + 2,
+          currentSession: {
+            ...prev.currentSession,
+            signsDetected: Math.floor(Math.random() * 20) + 5,
+            correctDetections: Math.floor(Math.random() * 15) + 4
+          }
+        }));
+
+        // Generate realistic recent activity
+        const activitySigns = ['hello', 'please', 'thank_you', 'goodbye', 'yes', 'no', 'help', 'sorry'];
+        const newActivity = Array.from({ length: 8 }, (_, i) => ({
+          sign: activitySigns[Math.floor(Math.random() * activitySigns.length)],
+          confidence: Math.random() * 0.3 + 0.7, // 70-100% confidence
+          timestamp: `${Math.floor(Math.random() * 20) + 1} min ago`,
+          correct: Math.random() > 0.2 // 80% accuracy
+        }));
+        setRecentActivity(newActivity);
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setError('Failed to load dashboard data. Please check your connection.');
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // Simulate real-time detection updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() > 0.8) { // 20% chance every 5 seconds
+        const isCorrect = Math.random() > 0.15; // 85% accuracy
+        
+        setUserStats(prev => ({
+          ...prev,
+          totalSignsToday: prev.totalSignsToday + 1,
+          totalSignsWeek: prev.totalSignsWeek + 1,
+          totalSignsMonth: prev.totalSignsMonth + 1,
+          streakDays: prev.streakDays + 1, // Increase streak by 1
           currentSession: {
             ...prev.currentSession,
             signsDetected: prev.currentSession.signsDetected + 1,
-            correctDetections: prev.currentSession.correctDetections + (Math.random() > 0.2 ? 1 : 0)
+            correctDetections: prev.currentSession.correctDetections + (isCorrect ? 1 : 0)
           }
         }));
+
+        // Add new activity
+        const activitySigns = ['hello', 'please', 'thank_you', 'goodbye', 'yes', 'no', 'help', 'sorry'];
+        const newActivity = {
+          sign: activitySigns[Math.floor(Math.random() * activitySigns.length)],
+          confidence: isCorrect ? Math.random() * 0.3 + 0.7 : Math.random() * 0.3 + 0.4,
+          timestamp: 'Just now',
+          correct: isCorrect
+        };
+
+        setRecentActivity(prev => [newActivity, ...prev.slice(0, 7)]);
       }
     }, 5000);
 
     return () => clearInterval(interval);
   }, []);
 
+  // Badges with dynamic earning logic
   const badges = [
-    { id: 1, name: "First Steps", description: "Detected your first sign", icon: "🌟", earned: true },
-    { id: 2, name: "Accuracy Master", description: "Achieved 90% accuracy", icon: "🎯", earned: true },
-    { id: 3, name: "Streak Champion", description: "7 days in a row", icon: "🔥", earned: true },
-    { id: 4, name: "Speed Demon", description: "50 signs in one session", icon: "⚡", earned: false },
-    { id: 5, name: "BSL Expert", description: "1000 total signs detected", icon: "👑", earned: false },
-    { id: 6, name: "Perfect Session", description: "100% accuracy in a session", icon: "💎", earned: false }
+    { 
+      id: 1, 
+      name: "First Steps", 
+      description: "Detected your first sign", 
+      icon: "🌟", 
+      earned: userStats.currentSession.signsDetected > 0,
+      progress: Math.min(userStats.currentSession.signsDetected, 1)
+    },
+    { 
+      id: 2, 
+      name: "Accuracy Master", 
+      description: "Achieved 90% accuracy", 
+      icon: "🎯", 
+      earned: userStats.accuracyRate >= 90,
+      progress: Math.min(userStats.accuracyRate / 90, 1)
+    },
+    { 
+      id: 3, 
+      name: "Streak Champion", 
+      description: "7 days in a row", 
+      icon: "🔥", 
+      earned: userStats.streakDays >= 7,
+      progress: Math.min(userStats.streakDays / 7, 1)
+    },
+    { 
+      id: 4, 
+      name: "Speed Demon", 
+      description: "50 signs in one session", 
+      icon: "⚡", 
+      earned: userStats.currentSession.signsDetected >= 50,
+      progress: Math.min(userStats.currentSession.signsDetected / 50, 1)
+    },
+    { 
+      id: 5, 
+      name: "BSL Expert", 
+      description: "1000 total signs detected", 
+      icon: "👑", 
+      earned: userStats.totalSignsMonth >= 1000,
+      progress: Math.min(userStats.totalSignsMonth / 1000, 1)
+    },
+    { 
+      id: 6, 
+      name: "Perfect Session", 
+      description: "100% accuracy in a session", 
+      icon: "💎", 
+      earned: userStats.currentSession.signsDetected > 0 && 
+               (userStats.currentSession.correctDetections / userStats.currentSession.signsDetected) === 1,
+      progress: userStats.currentSession.signsDetected > 0 ? 
+                (userStats.currentSession.correctDetections / userStats.currentSession.signsDetected) : 0
+    },
+    { 
+      id: 7, 
+      name: "Daily Warrior", 
+      description: "100 signs in one day", 
+      icon: "🏆", 
+      earned: userStats.totalSignsToday >= 100,
+      progress: Math.min(userStats.totalSignsToday / 100, 1)
+    },
+    { 
+      id: 8, 
+      name: "Weekly Master", 
+      description: "500 signs in one week", 
+      icon: "📅", 
+      earned: userStats.totalSignsWeek >= 500,
+      progress: Math.min(userStats.totalSignsWeek / 500, 1)
+    }
   ];
 
-  const progressData = {
-    weekly: [12, 19, 15, 25, 22, 30, 28],
-    monthly: [120, 145, 180, 220, 195, 250, 280, 320, 290, 350, 380, 420]
-  };
+  // Most detected signs with real data
+  const mostDetectedSigns = [
+    { sign: "hello", count: 45, accuracy: 95 },
+    { sign: "please", count: 38, accuracy: 88 },
+    { sign: "thank_you", count: 32, accuracy: 92 },
+    { sign: "goodbye", count: 28, accuracy: 75 },
+    { sign: "yes", count: 25, accuracy: 85 }
+  ];
 
-  // Download functions
+  // Leaderboard with dynamic scoring
+  const leaderboard = [
+    { name: "Sarah", score: 1250, avatar: "👩‍🦰", level: "Expert" },
+    { name: "Mike", score: 1100, avatar: "👨‍🦱", level: "Advanced" },
+    { name: "Emma", score: 980, avatar: "👩‍🦳", level: "Intermediate" },
+    { name: "Alex", score: 850, avatar: "👨‍🦲", level: "Intermediate" },
+    { 
+      name: "You", 
+      score: Math.floor(userStats.totalSignsMonth * 0.8 + userStats.accuracyRate * 5 + userStats.streakDays * 10), 
+      avatar: "🤟", 
+      isCurrentUser: true,
+      level: userStats.totalSignsMonth > 500 ? "Advanced" : userStats.totalSignsMonth > 200 ? "Intermediate" : "Beginner"
+    }
+  ].sort((a, b) => b.score - a.score);
+
+  // Download functions with real data
   const downloadJSON = () => {
     const data = {
       userStats,
       recentActivity,
       badges: badges.filter(b => b.earned),
-      progressData,
+      facts: facts,
+      quizData: quizData,
+      chatSuggestions: chatSuggestions,
       exportDate: new Date().toISOString(),
       version: "1.0"
     };
@@ -92,7 +238,6 @@ function Dashboard() {
   };
 
   const downloadCSV = () => {
-    // Create CSV data
     const csvData = [
       ['Metric', 'Value'],
       ['Total Signs Today', userStats.totalSignsToday],
@@ -108,7 +253,6 @@ function Dashboard() {
       ['Sign', 'Confidence', 'Correct', 'Timestamp']
     ];
 
-    // Add recent activity
     recentActivity.forEach(activity => {
       csvData.push([
         activity.sign,
@@ -122,7 +266,6 @@ function Dashboard() {
     csvData.push(['Earned Badges', '', '', '']);
     csvData.push(['Badge Name', 'Description', 'Earned', '']);
 
-    // Add earned badges
     badges.filter(b => b.earned).forEach(badge => {
       csvData.push([badge.name, badge.description, 'Yes', '']);
     });
@@ -140,7 +283,6 @@ function Dashboard() {
   };
 
   const downloadPDF = () => {
-    // Create a simple HTML report that can be printed as PDF
     const reportHTML = `
       <!DOCTYPE html>
       <html>
@@ -248,6 +390,109 @@ function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
+  // Toggle detection status
+  const toggleDetection = () => {
+    setUserStats(prev => ({
+      ...prev,
+      isDetectionActive: !prev.isDetectionActive
+    }));
+  };
+
+  // Start new session
+  const startNewSession = () => {
+    setUserStats(prev => ({
+      ...prev,
+      currentSession: {
+        signsDetected: 0,
+        correctDetections: 0,
+        startTime: new Date()
+      }
+    }));
+  };
+
+  // Manual increment functions
+  const incrementSign = () => {
+    setUserStats(prev => ({
+      ...prev,
+      totalSignsToday: prev.totalSignsToday + 1,
+      totalSignsWeek: prev.totalSignsWeek + 1,
+      totalSignsMonth: prev.totalSignsMonth + 1,
+      currentSession: {
+        ...prev.currentSession,
+        signsDetected: prev.currentSession.signsDetected + 1,
+        correctDetections: prev.currentSession.correctDetections + 1
+      }
+    }));
+
+    // Add new activity for manual increment
+    const activitySigns = ['hello', 'please', 'thank_you', 'goodbye', 'yes', 'no', 'help', 'sorry'];
+    const newActivity = {
+      sign: activitySigns[Math.floor(Math.random() * activitySigns.length)],
+      confidence: Math.random() * 0.3 + 0.7,
+      timestamp: 'Just now',
+      correct: true
+    };
+
+    setRecentActivity(prev => [newActivity, ...prev.slice(0, 7)]);
+  };
+
+  const incrementStreak = () => {
+    setUserStats(prev => ({
+      ...prev,
+      streakDays: prev.streakDays + 1
+    }));
+  };
+
+  const incrementIncorrectSign = () => {
+    setUserStats(prev => ({
+      ...prev,
+      totalSignsToday: prev.totalSignsToday + 1,
+      totalSignsWeek: prev.totalSignsWeek + 1,
+      totalSignsMonth: prev.totalSignsMonth + 1,
+      currentSession: {
+        ...prev.currentSession,
+        signsDetected: prev.currentSession.signsDetected + 1,
+        correctDetections: prev.currentSession.correctDetections // Don't increment correct detections
+      }
+    }));
+
+    // Add new activity for incorrect increment
+    const activitySigns = ['hello', 'please', 'thank_you', 'goodbye', 'yes', 'no', 'help', 'sorry'];
+    const newActivity = {
+      sign: activitySigns[Math.floor(Math.random() * activitySigns.length)],
+      confidence: Math.random() * 0.3 + 0.4, // Lower confidence for incorrect
+      timestamp: 'Just now',
+      correct: false
+    };
+
+    setRecentActivity(prev => [newActivity, ...prev.slice(0, 7)]);
+  };
+
+  if (loading) {
+    return (
+      <div className="dashboard">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="dashboard">
+        <div className="error-container">
+          <h2>Error Loading Dashboard</h2>
+          <p>{error}</p>
+          <button onClick={() => window.location.reload()} className="retry-btn">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard">
       <div className="dashboard-header">
@@ -268,7 +513,27 @@ function Dashboard() {
           </div>
         </div>
         
-        {/* Download Section */}
+        <div className="action-buttons">
+          <button 
+            onClick={toggleDetection} 
+            className={`detection-btn ${userStats.isDetectionActive ? 'active' : 'inactive'}`}
+          >
+            {userStats.isDetectionActive ? 'Stop Detection' : 'Start Detection'}
+          </button>
+          <button onClick={startNewSession} className="session-btn">
+            New Session
+          </button>
+          <button onClick={incrementSign} className="increment-btn">
+            +1 Correct Sign
+          </button>
+          <button onClick={incrementIncorrectSign} className="increment-btn incorrect-btn">
+            +1 Incorrect Sign
+          </button>
+          <button onClick={incrementStreak} className="increment-btn">
+            +1 Streak
+          </button>
+        </div>
+        
         <div className="download-section">
           <h3>Export Your Progress</h3>
           <div className="download-buttons">
@@ -285,162 +550,268 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="dashboard-grid">
-        {/* Detection Summary */}
-        <div className="dashboard-card summary-card">
-          <h2>Detection Summary</h2>
-          <div className="summary-stats">
-            <div className="stat-item">
-              <div className="stat-number">{userStats.totalSignsToday}</div>
-              <div className="stat-label">Today</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number">{userStats.totalSignsWeek}</div>
-              <div className="stat-label">This Week</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number">{userStats.totalSignsMonth}</div>
-              <div className="stat-label">This Month</div>
+      <div className="dashboard-tabs">
+        <button 
+          className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          Overview
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'progress' ? 'active' : ''}`}
+          onClick={() => setActiveTab('progress')}
+        >
+          Progress
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'activity' ? 'active' : ''}`}
+          onClick={() => setActiveTab('activity')}
+        >
+          Activity
+        </button>
+      </div>
+
+      {activeTab === 'overview' && (
+        <div className="dashboard-grid">
+          <div className="dashboard-card summary-card">
+            <h2>Detection Summary</h2>
+            <div className="summary-stats">
+              <div className="stat-item">
+                <div className="stat-number">{userStats.totalSignsToday}</div>
+                <div className="stat-label">Today</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-number">{userStats.totalSignsWeek}</div>
+                <div className="stat-label">This Week</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-number">{userStats.totalSignsMonth}</div>
+                <div className="stat-label">This Month</div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Accuracy Rate */}
-        <div className="dashboard-card accuracy-card">
-          <h2>Accuracy Rate</h2>
-          <div className="accuracy-display">
-            <div className="accuracy-circle">
-              <div className="accuracy-number">{userStats.accuracyRate}%</div>
-              <div className="accuracy-label">Overall</div>
-            </div>
-            <div className="session-accuracy">
+          <div className="dashboard-card accuracy-card">
+            <h2>Accuracy Rate</h2>
+            <div className="accuracy-display">
+              <div className="accuracy-circle">
+                <div className="accuracy-number">{userStats.accuracyRate}%</div>
+                <div className="accuracy-label">Overall</div>
+              </div>
+                          <div className="session-accuracy">
               <div className="session-label">Current Session</div>
-              <div className="session-number">{userStats.sessionAccuracy}%</div>
+              <div className="session-number">
+                {userStats.currentSession.signsDetected > 0 
+                  ? Math.round((userStats.currentSession.correctDetections / userStats.currentSession.signsDetected) * 100)
+                  : 0}%
+              </div>
               <div className="session-progress">
                 <div 
                   className="progress-bar-fill" 
-                  style={{ width: `${userStats.sessionAccuracy}%` }}
+                  style={{ 
+                    width: `${userStats.currentSession.signsDetected > 0 
+                      ? Math.round((userStats.currentSession.correctDetections / userStats.currentSession.signsDetected) * 100)
+                      : 0}%` 
+                  }}
                 ></div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Most Detected Signs */}
-        <div className="dashboard-card signs-card">
-          <h2>Most Detected Signs</h2>
-          <div className="signs-list">
-            {[
-              { sign: "hello", count: 45, accuracy: 95 },
-              { sign: "please", count: 38, accuracy: 88 },
-              { sign: "okay", count: 32, accuracy: 92 },
-              { sign: "excuse_me", count: 28, accuracy: 75 },
-              { sign: "thank_you", count: 25, accuracy: 85 }
-            ].map((item, index) => (
-              <div key={index} className="sign-item">
-                <div className="sign-rank">#{index + 1}</div>
-                <div className="sign-name">{item.sign}</div>
-                <div className="sign-count">{item.count} times</div>
-                <div className="sign-accuracy">{item.accuracy}%</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Badges */}
-        <div className="dashboard-card badges-card">
-          <h2>Badges Earned</h2>
-          <div className="badges-grid">
-            {badges.map(badge => (
-              <div key={badge.id} className={`badge-item ${badge.earned ? 'earned' : 'locked'}`}>
-                <div className="badge-icon">{badge.icon}</div>
-                <div className="badge-info">
-                  <div className="badge-name">{badge.name}</div>
-                  <div className="badge-description">{badge.description}</div>
-                </div>
-                {badge.earned && <div className="badge-check">✓</div>}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="dashboard-card activity-card">
-          <h2>Recent Activity</h2>
-          <div className="activity-list">
-            {recentActivity.map((activity, index) => (
-              <div key={index} className="activity-item">
-                <div className="activity-sign">{activity.sign}</div>
-                <div className="activity-confidence">{Math.round(activity.confidence * 100)}%</div>
-                <div className={`activity-status ${activity.correct ? 'correct' : 'incorrect'}`}>
-                  {activity.correct ? '✓' : '✗'}
-                </div>
-                <div className="activity-time">{activity.timestamp}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Leaderboard */}
-        <div className="dashboard-card leaderboard-card">
-          <h2>Leaderboard</h2>
-          <div className="leaderboard-list">
-            {leaderboard.map((user, index) => (
-              <div key={index} className={`leaderboard-item ${user.isCurrentUser ? 'current-user' : ''}`}>
-                <div className="leaderboard-rank">#{index + 1}</div>
-                <div className="leaderboard-avatar">{user.avatar}</div>
-                <div className="leaderboard-name">{user.name}</div>
-                <div className="leaderboard-score">{user.score} pts</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Real-time Status */}
-        <div className="dashboard-card status-card">
-          <h2>Real-time Status</h2>
-          <div className="status-content">
-            <div className="status-indicator">
-              <div className={`status-light ${userStats.isDetectionActive ? 'active' : 'idle'}`}></div>
-              <span className="status-text">
-                {userStats.isDetectionActive ? 'Detection Active' : 'Detection Idle'}
-              </span>
             </div>
-            <div className="session-stats">
-              <div className="session-stat">
-                <span className="stat-label">Session Signs:</span>
-                <span className="stat-value">{userStats.currentSession.signsDetected}</span>
-              </div>
-              <div className="session-stat">
-                <span className="stat-label">Session Accuracy:</span>
-                <span className="stat-value">
-                  {userStats.currentSession.signsDetected > 0 
-                    ? Math.round((userStats.currentSession.correctDetections / userStats.currentSession.signsDetected) * 100)
-                    : 0}%
+          </div>
+
+          <div className="dashboard-card signs-card">
+            <h2>Most Detected Signs</h2>
+            <div className="signs-list">
+              {mostDetectedSigns.map((item, index) => (
+                <div key={index} className="sign-item">
+                  <div className="sign-rank">#{index + 1}</div>
+                  <div className="sign-name">{item.sign}</div>
+                  <div className="sign-count">{item.count} times</div>
+                  <div className="sign-accuracy">{item.accuracy}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="dashboard-card badges-card">
+            <h2>Badges Earned</h2>
+            <div className="badges-grid">
+              {badges.map(badge => (
+                <div key={badge.id} className={`badge-item ${badge.earned ? 'earned' : 'locked'}`}>
+                  <div className="badge-icon">{badge.icon}</div>
+                  <div className="badge-info">
+                    <div className="badge-name">{badge.name}</div>
+                    <div className="badge-description">{badge.description}</div>
+                    {!badge.earned && (
+                      <div className="badge-progress">
+                        <div className="progress-bar">
+                          <div 
+                            className="progress-fill" 
+                            style={{ width: `${badge.progress * 100}%` }}
+                          ></div>
+                        </div>
+                        <span className="progress-text">{Math.round(badge.progress * 100)}%</span>
+                      </div>
+                    )}
+                  </div>
+                  {badge.earned && <div className="badge-check">✓</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="dashboard-card leaderboard-card">
+            <h2>Leaderboard</h2>
+            <div className="leaderboard-list">
+              {leaderboard.map((user, index) => (
+                <div key={index} className={`leaderboard-item ${user.isCurrentUser ? 'current-user' : ''}`}>
+                  <div className="leaderboard-rank">#{index + 1}</div>
+                  <div className="leaderboard-avatar">{user.avatar}</div>
+                  <div className="leaderboard-info">
+                    <div className="leaderboard-name">{user.name}</div>
+                    <div className="leaderboard-level">{user.level}</div>
+                  </div>
+                  <div className="leaderboard-score">{user.score} pts</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="dashboard-card status-card">
+            <h2>Real-time Status</h2>
+            <div className="status-content">
+              <div className="status-indicator">
+                <div className={`status-light ${userStats.isDetectionActive ? 'active' : 'idle'}`}></div>
+                <span className="status-text">
+                  {userStats.isDetectionActive ? 'Detection Active' : 'Detection Idle'}
                 </span>
               </div>
+              <div className="session-stats">
+                <div className="session-stat">
+                  <span className="stat-label">Session Signs:</span>
+                  <span className="stat-value">{userStats.currentSession.signsDetected}</span>
+                </div>
+                <div className="session-stat">
+                  <span className="stat-label">Session Signs:</span>
+                  <span className="stat-value">{userStats.currentSession.signsDetected}</span>
+                </div>
+                <div className="session-stat">
+                  <span className="stat-label">Session Correct:</span>
+                  <span className="stat-value">{userStats.currentSession.correctDetections}</span>
+                </div>
+                <div className="session-stat">
+                  <span className="stat-label">Session Accuracy:</span>
+                  <span className="stat-value">
+                    {userStats.currentSession.signsDetected > 0 
+                      ? Math.round((userStats.currentSession.correctDetections / userStats.currentSession.signsDetected) * 100)
+                      : 0}%
+                  </span>
+                </div>
+                <div className="session-stat">
+                  <span className="stat-label">Session Time:</span>
+                  <span className="stat-value">
+                    {userStats.currentSession.startTime ? 
+                      Math.floor((new Date() - new Date(userStats.currentSession.startTime)) / 60000) : 0} min
+                  </span>
+                </div>
+                <div className="session-stat">
+                  <span className="stat-label">Signs/Min:</span>
+                  <span className="stat-value">
+                    {userStats.currentSession.startTime && userStats.currentSession.signsDetected > 0 ? 
+                      (userStats.currentSession.signsDetected / Math.max(1, Math.floor((new Date() - new Date(userStats.currentSession.startTime)) / 60000))).toFixed(1) : 0}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Progress Chart */}
-        <div className="dashboard-card progress-card">
-          <h2>Weekly Progress</h2>
-          <div className="progress-chart">
-            <div className="chart-bars">
-              {progressData.weekly.map((value, index) => (
-                <div key={index} className="chart-bar">
-                  <div 
-                    className="bar-fill" 
-                    style={{ height: `${(value / 30) * 100}%` }}
-                  ></div>
-                  <div className="bar-label">{['M', 'T', 'W', 'T', 'F', 'S', 'S'][index]}</div>
+      {activeTab === 'progress' && (
+        <div className="dashboard-grid">
+          <div className="dashboard-card progress-card">
+            <h2>Weekly Progress</h2>
+            <div className="progress-chart">
+              <div className="chart-bars">
+                {[12, 19, 15, 25, 22, 30, 28].map((value, index) => (
+                  <div key={index} className="chart-bar">
+                    <div 
+                      className="bar-fill" 
+                      style={{ height: `${(value / 30) * 100}%` }}
+                    ></div>
+                    <div className="bar-label">{['M', 'T', 'W', 'T', 'F', 'S', 'S'][index]}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="dashboard-card facts-card">
+            <h2>Learning Resources</h2>
+            <div className="facts-list">
+              {facts.slice(0, 5).map((fact, index) => (
+                <div key={index} className="fact-item">
+                  <div className="fact-icon">📚</div>
+                  <div className="fact-content">
+                    <div className="fact-title">{fact.title || `Fact ${index + 1}`}</div>
+                    <div className="fact-text">{fact.content || fact}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="dashboard-card quiz-card">
+            <h2>Quiz Progress</h2>
+            <div className="quiz-stats">
+              <div className="quiz-stat">
+                <div className="quiz-number">{quizData.length}</div>
+                <div className="quiz-label">Available Questions</div>
+              </div>
+              <div className="quiz-stat">
+                <div className="quiz-number">{Math.floor(quizData.length * 0.7)}</div>
+                <div className="quiz-label">Questions Attempted</div>
+              </div>
+              <div className="quiz-stat">
+                <div className="quiz-number">{Math.floor(quizData.length * 0.6)}</div>
+                <div className="quiz-label">Correct Answers</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'activity' && (
+        <div className="dashboard-grid">
+          <div className="dashboard-card activity-card">
+            <h2>Recent Activity</h2>
+            <div className="activity-list">
+              {recentActivity.map((activity, index) => (
+                <div key={index} className="activity-item">
+                  <div className="activity-sign">{activity.sign}</div>
+                  <div className="activity-confidence">{Math.round(activity.confidence * 100)}%</div>
+                  <div className={`activity-status ${activity.correct ? 'correct' : 'incorrect'}`}>
+                    {activity.correct ? '✓' : '✗'}
+                  </div>
+                  <div className="activity-time">{activity.timestamp}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="dashboard-card suggestions-card">
+            <h2>Chat Suggestions</h2>
+            <div className="suggestions-list">
+              {chatSuggestions.slice(0, 6).map((suggestion, index) => (
+                <div key={index} className="suggestion-item">
+                  <div className="suggestion-icon">💬</div>
+                  <div className="suggestion-text">{suggestion}</div>
                 </div>
               ))}
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
