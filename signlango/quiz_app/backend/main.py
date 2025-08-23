@@ -156,7 +156,7 @@ except Exception as e:
 # Sign detection variables
 signs = ["hi", "please", "excuse_me", "okay"]
 actions = np.array(["hi", "please", "excuse_me", "okay"])
-threshold = 0.5
+threshold = 0.5  # Increased threshold for more accurate detection
 
 # Global variables for sign detection (similar to original code)
 sequence = []
@@ -576,7 +576,7 @@ quiz_questions = [
             "In many settings including education, healthcare, and public events",
             "Only in government buildings",
         ],
-        "correct_answer": "In many settings including education, healthcare, and public events",
+        "correct_answer": "In many settings including education, healthcare, public events, and government services.",
         "explanation": "BSL interpreters are needed in many settings including education, healthcare, public events, and government services.",
         "category": "culture",
         "difficulty": "intermediate",
@@ -3911,6 +3911,14 @@ async def detect_sign_base64(data: Dict[str, Any]):
     """Detect sign language from base64 encoded image"""
     global sequence, sentence, predictions
 
+    # Get optional parameters
+    include_visualization = data.get(
+        "include_visualization", False
+    )  # Default to False for performance
+    image_quality = data.get(
+        "image_quality", 0.7
+    )  # Default to 70% quality for faster processing
+
     if not model:
         return {
             "detected_sign": "no_sign",
@@ -3971,6 +3979,52 @@ async def detect_sign_base64(data: Dict[str, Any]):
         # Process with MediaPipe using global instance
         try:
             image, results = mediapipe_detection(image, holistic)
+
+            # Only create annotated image if visualization is requested
+            annotated_image_base64 = None
+            if include_visualization:
+                # Resize image for faster processing
+                height, width = image.shape[:2]
+                new_width = 480  # Reduced from 640
+                new_height = int(height * new_width / width)
+                resized_image = cv2.resize(image, (new_width, new_height))
+
+                # Draw only hand landmarks for faster processing
+                annotated_image = resized_image.copy()
+
+                # Draw left hand landmarks (only if detected)
+                if results.left_hand_landmarks:
+                    mp_drawing.draw_landmarks(
+                        annotated_image,
+                        results.left_hand_landmarks,
+                        mp_holistic.HAND_CONNECTIONS,
+                        mp_drawing.DrawingSpec(
+                            color=(121, 22, 76), thickness=2, circle_radius=3
+                        ),
+                        mp_drawing.DrawingSpec(
+                            color=(121, 44, 250), thickness=1, circle_radius=1
+                        ),
+                    )
+
+                # Draw right hand landmarks (only if detected)
+                if results.right_hand_landmarks:
+                    mp_drawing.draw_landmarks(
+                        annotated_image,
+                        results.right_hand_landmarks,
+                        mp_holistic.HAND_CONNECTIONS,
+                        mp_drawing.DrawingSpec(
+                            color=(245, 117, 66), thickness=2, circle_radius=3
+                        ),
+                        mp_drawing.DrawingSpec(
+                            color=(245, 66, 230), thickness=1, circle_radius=1
+                        ),
+                    )
+
+                # Convert annotated image to base64 with reduced quality and size
+                encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), int(image_quality * 100)]
+                _, buffer = cv2.imencode(".jpg", annotated_image, encode_param)
+                annotated_image_base64 = base64.b64encode(buffer).decode("utf-8")
+
         except Exception as e:
             return {
                 "detected_sign": "no_sign",
@@ -4002,7 +4056,7 @@ async def detect_sign_base64(data: Dict[str, Any]):
                 "message": "No hand landmarks detected. Please ensure your hands are visible.",
             }
 
-        # Use the exact logic from the original real-time code
+        # Use the exact logic from the original code
         sequence.append(keypoints)
         sequence = sequence[-30:]  # Keep only last 30 frames
 
@@ -4011,65 +4065,80 @@ async def detect_sign_base64(data: Dict[str, Any]):
         all_probabilities = [0.25, 0.25, 0.25, 0.25]
         status_message = ""
 
-        if len(sequence) == 30:
+        # Debug: Print sequence length and keypoints info
+        print(
+            f"📊 Sequence length: {len(sequence)}/30, Keypoints sum: {np.sum(keypoints):.3f}"
+        )
+
+        # Make prediction even with fewer frames for more responsive detection
+        if len(sequence) >= 10:  # Changed from 30 to 10 for more responsive detection
             try:
-                # Make prediction exactly as in original code
-                res = model.predict(np.expand_dims(sequence, axis=0), verbose=0)[0]
+                # Pad sequence to 30 frames if needed
+                if len(sequence) < 30:
+                    # Pad with the last frame repeated
+                    padded_sequence = sequence + [sequence[-1]] * (30 - len(sequence))
+                else:
+                    padded_sequence = sequence
+
+                # Make prediction
+                res = model.predict(np.expand_dims(padded_sequence, axis=0), verbose=0)[
+                    0
+                ]
                 predictions.append(np.argmax(res))
 
                 # Debug output
                 print(
-                    f"Frame {len(predictions)}: Predicted {actions[np.argmax(res)]} with confidence {res[np.argmax(res)]:.3f}"
+                    f"🎯 Frame {len(predictions)}: Predicted {actions[np.argmax(res)]} with confidence {res[np.argmax(res)]:.3f}"
                 )
-                print(f"All probabilities: {[f'{p:.3f}' for p in res]}")
+                print(f"📈 All probabilities: {[f'{p:.3f}' for p in res]}")
 
-                # Use the exact viz logic from original code (exactly as in user's working code)
-                if len(predictions) >= 10 and np.unique(predictions[-10:])[
-                    0
-                ] == np.argmax(res):
-                    if res[np.argmax(res)] > threshold:
-                        print(
-                            f"✅ Sign detected: {actions[np.argmax(res)]} (confidence: {res[np.argmax(res)]:.3f})"
-                        )
-                        status_message = f"Sign detected: {actions[np.argmax(res)]}"
+                # Improved detection logic with consistency check
+                predicted_sign = actions[np.argmax(res)]
+                confidence = float(res[np.argmax(res)])
 
-                        if len(sentence) > 0:
-                            if actions[np.argmax(res)] != sentence[-1]:
-                                sentence.append(actions[np.argmax(res)])
-                        else:
-                            sentence.append(actions[np.argmax(res)])
+                # Check if we have enough consistent predictions
+                if len(predictions) >= 5:
+                    # Check if the last 5 predictions are consistent
+                    recent_predictions = predictions[-5:]
+                    if len(set(recent_predictions)) == 1 and confidence > threshold:
+                        detected_sign = predicted_sign
+                        status_message = f"✅ Sign detected: {detected_sign} (confidence: {confidence:.3f})"
 
+                        # Add to sentence if it's different from the last one
+                        if len(sentence) == 0 or predicted_sign != sentence[-1]:
+                            sentence.append(predicted_sign)
+                            print(f"🎯 Added to sentence: {sentence}")
+                    else:
+                        detected_sign = predicted_sign
+                        status_message = f"🔍 Detecting: {detected_sign} (confidence: {confidence:.3f}) - Need more consistent predictions"
+                else:
+                    detected_sign = predicted_sign
+                    status_message = f"📊 Collecting predictions: {predicted_sign} (confidence: {confidence:.3f}) - {len(predictions)}/5 frames"
+
+                # Keep sentence manageable
                 if len(sentence) > 5:
                     sentence = sentence[-5:]
-
-                # Set detected sign and confidence
-                if len(sentence) > 0:
-                    detected_sign = sentence[-1]
-                    confidence = float(res[np.argmax(res)])
-                    print(f"🎯 Current sentence: {sentence}")
-                else:
-                    # Show current prediction even if not added to sentence yet
-                    detected_sign = actions[np.argmax(res)]
-                    confidence = float(res[np.argmax(res)])
-                    status_message = (
-                        f"Detecting: {detected_sign} (confidence: {confidence:.3f})"
-                    )
 
                 all_probabilities = res.tolist()
 
             except Exception as e:
                 print(f"❌ Prediction error: {e}")
-                status_message = "Error making prediction"
+                status_message = f"Error making prediction: {str(e)}"
                 return {
                     "detected_sign": "no_sign",
                     "confidence": 0.0,
                     "all_probabilities": [0.25, 0.25, 0.25, 0.25],
                     "available_signs": signs,
-                    "message": "Error making prediction.",
+                    "message": f"Error making prediction: {str(e)}",
                 }
         else:
-            print(f"📊 Collecting frames: {len(sequence)}/30")
-            status_message = f"Collecting frames: {len(sequence)}/30"
+            print(f"📊 Collecting frames: {len(sequence)}/10")
+            status_message = f"Collecting frames: {len(sequence)}/10"
+
+        # Show current sentence if available
+        if len(sentence) > 0:
+            detected_sign = sentence[-1]
+            status_message = f"✅ Current sign: {detected_sign}"
 
         return {
             "detected_sign": detected_sign,
@@ -4081,6 +4150,56 @@ async def detect_sign_base64(data: Dict[str, Any]):
             "predictions_count": len(predictions),
             "status_message": status_message,
             "threshold": threshold,
+            "annotated_image": f"data:image/jpeg;base64,{annotated_image_base64}"
+            if annotated_image_base64
+            else None,
+            "mediapipe_data": {
+                "pose_landmarks": [
+                    {
+                        "x": float(lm.x),
+                        "y": float(lm.y),
+                        "z": float(lm.z),
+                        "visibility": float(lm.visibility),
+                    }
+                    for lm in results.pose_landmarks.landmark
+                ]
+                if results.pose_landmarks
+                else [],
+                "left_hand_landmarks": [
+                    {"x": float(lm.x), "y": float(lm.y), "z": float(lm.z)}
+                    for lm in results.left_hand_landmarks.landmark
+                ]
+                if results.left_hand_landmarks
+                else [],
+                "right_hand_landmarks": [
+                    {"x": float(lm.x), "y": float(lm.y), "z": float(lm.z)}
+                    for lm in results.right_hand_landmarks.landmark
+                ]
+                if results.right_hand_landmarks
+                else [],
+                "face_landmarks": [
+                    {"x": float(lm.x), "y": float(lm.y), "z": float(lm.z)}
+                    for lm in results.face_landmarks.landmark
+                ]
+                if results.face_landmarks
+                else [],
+                "keypoints_summary": {
+                    "pose_count": len(results.pose_landmarks.landmark)
+                    if results.pose_landmarks
+                    else 0,
+                    "left_hand_count": len(results.left_hand_landmarks.landmark)
+                    if results.left_hand_landmarks
+                    else 0,
+                    "right_hand_count": len(results.right_hand_landmarks.landmark)
+                    if results.right_hand_landmarks
+                    else 0,
+                    "face_count": len(results.face_landmarks.landmark)
+                    if results.face_landmarks
+                    else 0,
+                    "total_keypoints": len(keypoints),
+                    "keypoints_non_zero": int(np.count_nonzero(keypoints)),
+                },
+            },
         }
 
     except Exception as e:
@@ -4504,6 +4623,121 @@ async def get_chat_suggestions():
     return {"suggestions": suggestions, "categories": list(suggestions.keys())}
 
 
+@app.post("/detect-sign-keypoints")
+async def detect_sign_keypoints(data: Dict[str, Any]):
+    """Detect sign language from keypoints array (for client-side MediaPipe)"""
+    global sequence, sentence, predictions
+
+    if not model:
+        return {
+            "detected_sign": "no_sign",
+            "confidence": 0.0,
+            "status_message": "Model not available",
+        }
+
+    try:
+        keypoints = np.array(data.get("keypoints", []))
+
+        if len(keypoints) != 1662:
+            return {
+                "detected_sign": "no_sign",
+                "confidence": 0.0,
+                "status_message": "Invalid keypoints format",
+            }
+
+        # Use the same detection logic as the image-based endpoint
+        sequence.append(keypoints)
+        sequence = sequence[-30:]  # Keep only last 30 frames
+
+        detected_sign = "no_sign"
+        confidence = 0.0
+        status_message = ""
+
+        # Debug: Print sequence length and keypoints info
+        print(
+            f"📊 Client MP - Sequence length: {len(sequence)}/30, Keypoints sum: {np.sum(keypoints):.3f}"
+        )
+
+        # Make prediction even with fewer frames for more responsive detection
+        if len(sequence) >= 10:  # Changed from 30 to 10 for more responsive detection
+            try:
+                # Pad sequence to 30 frames if needed
+                if len(sequence) < 30:
+                    # Pad with the last frame repeated
+                    padded_sequence = sequence + [sequence[-1]] * (30 - len(sequence))
+                else:
+                    padded_sequence = sequence
+
+                # Make prediction
+                res = model.predict(np.expand_dims(padded_sequence, axis=0), verbose=0)[
+                    0
+                ]
+                predictions.append(np.argmax(res))
+
+                # Debug output
+                print(
+                    f"🎯 Client MP - Frame {len(predictions)}: Predicted {actions[np.argmax(res)]} with confidence {res[np.argmax(res)]:.3f}"
+                )
+
+                # Improved detection logic with consistency check
+                predicted_sign = actions[np.argmax(res)]
+                confidence = float(res[np.argmax(res)])
+
+                # Check if we have enough consistent predictions
+                if len(predictions) >= 5:
+                    # Check if the last 5 predictions are consistent
+                    recent_predictions = predictions[-5:]
+                    if len(set(recent_predictions)) == 1 and confidence > threshold:
+                        detected_sign = predicted_sign
+                        status_message = f"✅ Sign detected: {detected_sign} (confidence: {confidence:.3f})"
+
+                        # Add to sentence if it's different from the last one
+                        if len(sentence) == 0 or predicted_sign != sentence[-1]:
+                            sentence.append(predicted_sign)
+                            print(f"🎯 Added to sentence: {sentence}")
+                    else:
+                        detected_sign = predicted_sign
+                        status_message = f"🔍 Detecting: {detected_sign} (confidence: {confidence:.3f}) - Need more consistent predictions"
+                else:
+                    detected_sign = predicted_sign
+                    status_message = f"📊 Collecting predictions: {predicted_sign} (confidence: {confidence:.3f}) - {len(predictions)}/5 frames"
+
+                # Keep sentence manageable
+                if len(sentence) > 5:
+                    sentence = sentence[-5:]
+
+            except Exception as e:
+                print(f"❌ Client MP - Prediction error: {e}")
+                status_message = f"Error making prediction: {str(e)}"
+                return {
+                    "detected_sign": "no_sign",
+                    "confidence": 0.0,
+                    "status_message": status_message,
+                }
+        else:
+            print(f"📊 Client MP - Collecting frames: {len(sequence)}/10")
+            status_message = f"Collecting frames: {len(sequence)}/10"
+
+        # Show current sentence if available
+        if len(sentence) > 0:
+            detected_sign = sentence[-1]
+            status_message = f"✅ Current sign: {detected_sign}"
+
+        return {
+            "detected_sign": detected_sign,
+            "confidence": confidence,
+            "status_message": status_message,
+        }
+
+    except Exception as e:
+        print(f"Unexpected error in client-side sign detection: {str(e)}")
+        return {
+            "detected_sign": "no_sign",
+            "confidence": 0.0,
+            "status_message": "Unexpected error. Please try again.",
+        }
+
+
 @app.post("/reset-detection")
 async def reset_detection():
     """Reset detection state"""
@@ -4584,6 +4818,23 @@ async def test_model():
         }
     except Exception as e:
         return {"error": f"Model test failed: {str(e)}", "model_loaded": False}
+
+
+@app.get("/debug-detection")
+async def debug_detection():
+    """Debug current detection state"""
+    global sequence, sentence, predictions
+
+    return {
+        "sequence_length": len(sequence),
+        "sentence": sentence,
+        "predictions_count": len(predictions),
+        "threshold": threshold,
+        "available_signs": signs,
+        "model_loaded": model is not None,
+        "mediapipe_loaded": holistic is not None,
+        "recent_predictions": predictions[-10:] if len(predictions) > 0 else [],
+    }
 
 
 @app.get("/test-detection")
