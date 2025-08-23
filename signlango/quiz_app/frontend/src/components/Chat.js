@@ -15,9 +15,12 @@ function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Only scroll when messages are added, not when other state changes
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages.length]);
 
   useEffect(() => {
     // Load common questions on component mount
@@ -37,6 +40,7 @@ function Chat() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!input.trim() || isLoading) return;
 
     const userMessage = {
@@ -144,13 +148,21 @@ function Chat() {
         <div className="quick-actions">
           <button 
             className="action-btn"
-            onClick={() => setShowCommonQuestions(!showCommonQuestions)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowCommonQuestions(!showCommonQuestions);
+            }}
           >
             Common Questions
           </button>
           <button 
             className="action-btn"
-            onClick={clearChat}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              clearChat();
+            }}
           >
             Clear Chat
           </button>
@@ -160,7 +172,7 @@ function Chat() {
 
         {/* Common Questions Panel */}
         {showCommonQuestions && (
-          <div className="common-questions-panel">
+          <div className="common-questions-panel" style={{ scrollBehavior: 'auto' }}>
             <h3>Commonly Asked Questions</h3>
             <div className="questions-grid">
               <div className="question-category">
@@ -170,7 +182,10 @@ function Chat() {
                     <button
                       key={index}
                       className="question-btn"
-                      onClick={() => handleCommonQuestionClick(q.question)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleCommonQuestionClick(q.question);
+                      }}
                     >
                       <span className="question-text">{q.question}</span>
                     </button>
@@ -182,7 +197,7 @@ function Chat() {
         )}
 
         {/* Chat Container */}
-        <div className="chat-container">
+        <div className="chat-container" style={{ scrollBehavior: 'auto' }}>
           <div className="chat-messages">
             {messages.length === 0 && (
               <div className="message assistant-message">

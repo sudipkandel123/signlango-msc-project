@@ -5,6 +5,51 @@
   box-sizing: border-box;
 }
 
+/* Prevent scroll on button clicks */
+button {
+  scroll-behavior: auto;
+}
+
+button:focus {
+  outline: none;
+}
+
+/* Prevent page scroll on button clicks */
+.action-btn,
+.question-btn,
+.suggestion-btn,
+.mode-btn {
+  scroll-behavior: auto;
+}
+
+/* Prevent page scroll on all interactive elements */
+.quick-actions,
+.common-questions-panel,
+.chat-tips {
+  scroll-behavior: auto;
+}
+
+/* Ensure buttons don't cause page scroll */
+button[type="button"],
+button[type="submit"] {
+  scroll-behavior: auto;
+}
+
+/* Prevent automatic scrolling in chat */
+.chat {
+  scroll-behavior: auto;
+}
+
+.chat-messages {
+  scroll-behavior: auto;
+}
+
+/* Prevent scroll on state changes */
+.common-questions-panel {
+  scroll-behavior: auto;
+  overflow: visible;
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -2366,6 +2411,7 @@ body {
   display: flex;
   flex-direction: column;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  scroll-behavior: auto;
 }
 
 .chat-messages {
