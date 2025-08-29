@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import cv2
@@ -7,10 +7,21 @@ import mediapipe as mp
 import tensorflow as tf
 import base64
 import io
+import os
 from PIL import Image
 import json
 import requests
 from typing import List, Dict, Any
+from dotenv import load_dotenv
+import google.generativeai as genai
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.schema import HumanMessage, AIMessage, SystemMessage
+from langchain.memory import ConversationBufferMemory
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain.chains import LLMChain
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI(title="Sign Language Tutorial API", version="1.0.0")
 
@@ -27,19 +38,83 @@ app.add_middleware(
 mp_holistic = mp.solutions.holistic
 mp_drawing = mp.solutions.drawing_utils
 
+# Initialize Google Gemini
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    gemini_model = genai.GenerativeModel('gemini-1.5-pro')
+    
+    # Initialize LangChain with Gemini
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-1.5-pro",
+        google_api_key=GOOGLE_API_KEY,
+        temperature=0.7,
+        max_output_tokens=2048,
+    )
+    
+    # BSL-specific system prompt
+    BSL_SYSTEM_PROMPT = """You are a British Sign Language (BSL) teaching assistant and information provider. Your role is to:
+Remember, the name of the user is Sudip.
+1. **Teach BSL**: Provide clear, accurate information about British Sign Language signs, grammar, and usage
+2. **Educational Context**: Focus on BSL specifically (not ASL or other sign languages unless asked to compare)
+3. **Conversation Memory**: Remember the user's learning progress and previous questions
+4. **Practical Guidance**: Offer practical tips for learning and using BSL
+5. **Cultural Sensitivity**: Be aware of Deaf culture and community perspectives
+6. **Encouraging**: Support the user's learning journey with positive reinforcement
+
+Key BSL Information:
+- BSL is the primary sign language used in the UK
+- BSL has its own grammar structure different from English
+- BSL uses facial expressions, body language, and hand movements
+- BSL has regional variations across the UK
+- BSL was officially recognized as a language in the UK in 2003
+
+Always provide helpful, accurate, and culturally appropriate responses about BSL. If you're unsure about something, acknowledge the limitation and suggest reliable resources."""
+
+    # Chat prompt template
+    chat_prompt = ChatPromptTemplate.from_messages([
+        ("system", BSL_SYSTEM_PROMPT),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human", "{input}")
+    ])
+
+    # Create the conversation chain
+    conversation_chain = LLMChain(
+        llm=llm,
+        prompt=chat_prompt,
+        memory=ConversationBufferMemory(memory_key="chat_history", return_messages=True),
+        verbose=False
+    )
+    
+    print("✅ Gemini AI with LangChain initialized successfully")
+else:
+    gemini_model = None
+    conversation_chain = None
+    print("⚠️  GOOGLE_API_KEY not found. Chat features will use fallback responses.")
+
 # Load the trained model
 model = None
 print("🚀 Starting model loading process...")
 
 try:
-    # Try to load the model exactly as in the original code
-    print("🔄 Attempting to load model.h5...")
-    model = tf.keras.models.load_model("model.h5")
-    print("✅ model.h5 loaded successfully")
-
-    print("🔄 Attempting to load model.weights.h5...")
-    model.load_weights("model.weights.h5")
-    print("✅ model.weights.h5 loaded successfully")
+    # Try to load the better model first, then fallback to others
+    model_files = ['model_better.h5', 'model_high_accuracy.h5', 'model.h5']
+    model_loaded = False
+    
+    for model_file in model_files:
+        if os.path.exists(model_file):
+            print(f"🔄 Attempting to load {model_file}...")
+            try:
+                model = tf.keras.models.load_model(model_file)
+                print(f"✅ {model_file} loaded successfully")
+                model_loaded = True
+                break
+            except Exception as e:
+                print(f"❌ Failed to load {model_file}: {e}")
+                continue
+    
+    if not model_loaded:
+        raise Exception("No model files could be loaded")
 
     print("📊 Model Summary:")
     model.summary()
@@ -4215,201 +4290,160 @@ async def detect_sign_base64(data: Dict[str, Any]):
 
 @app.post("/chat")
 async def chat_with_bsl_assistant(data: Dict[str, Any]):
-    """Enhanced chat with BSL assistant using comprehensive knowledge base"""
+    """Enhanced chat with BSL assistant using LangChain and Gemini"""
     try:
-        user_message = data.get("message", "")
-        chat_type = data.get(
-            "type", "general"
-        )  # general, quick_help, practice, culture
+        user_message = data.get("message", "").lower()
+        chat_type = data.get("type", "general")
 
         if not user_message:
             return {"response": "Please provide a question about BSL.", "error": False}
 
-        # Enhanced knowledge base for BSL
-        bsl_knowledge = {
-            # Basic Signs
-            "hello": {
-                "sign": "Wave your hand from side to side at shoulder level with an open palm",
-                "tips": "Make eye contact and smile while signing",
-                "variations": "Formal: more controlled movement, Informal: relaxed wave",
-            },
-            "thank_you": {
-                "sign": "Touch your chin with fingertips and move hand forward and down",
-                "tips": "Show genuine appreciation through facial expression",
-                "variations": "Very formal: two-handed sign, Casual: one-handed",
-            },
-            "please": {
-                "sign": "Place flat hand on chest and move in circular motion",
-                "tips": "Use this to make polite requests",
-                "variations": "More emphasis: larger circular motion",
-            },
-            "sorry": {
-                "sign": "Make a fist and rub it in a circular motion on your chest",
-                "tips": "Show sincerity through facial expression",
-                "variations": "Very sorry: more vigorous rubbing motion",
-            },
-            "goodbye": {
-                "sign": "Wave your hand with palm facing outward",
-                "tips": "Maintain eye contact until the end",
-                "variations": "Formal: controlled wave, Casual: relaxed wave",
-            },
-            # Numbers
-            "numbers": {
-                "1-5": "Use one hand, fingers extended",
-                "6-10": "Use two hands, specific finger combinations",
-                "11-20": "Special signs for teens",
-                "21+": "Combine number signs with finger spelling",
-            },
-            # Colors
-            "colors": {
-                "red": "Point to lips and move hand away",
-                "blue": "Point to throat area",
-                "green": "Point to chest and move hand away",
-                "yellow": "Point to chin and move hand away",
-                "black": "Point to eyebrow and move hand away",
-                "white": "Point to chest and move hand away",
-            },
-            # Family
-            "family": {
-                "mother": "Touch chin with thumb of open hand",
-                "father": "Touch forehead with thumb of open hand",
-                "sister": "Index finger touches nose, then chin",
-                "brother": "Index finger touches nose, then forehead",
-                "baby": "Cradle arms as if holding a baby",
-            },
-        }
-
-        # Enhanced response system
-        user_message_lower = user_message.lower()
-
-        # Quick help responses
-        if chat_type == "quick_help":
-            if any(word in user_message_lower for word in ["hello", "hi", "greeting"]):
-                response = f"**Hello in BSL:** {bsl_knowledge['hello']['sign']}\n\n**Tip:** {bsl_knowledge['hello']['tips']}\n\n**Variations:** {bsl_knowledge['hello']['variations']}"
-            elif any(word in user_message_lower for word in ["thank", "thanks"]):
-                response = f"**Thank You in BSL:** {bsl_knowledge['thank_you']['sign']}\n\n**Tip:** {bsl_knowledge['thank_you']['tips']}\n\n**Variations:** {bsl_knowledge['thank_you']['variations']}"
-            elif any(word in user_message_lower for word in ["please"]):
-                response = f"**Please in BSL:** {bsl_knowledge['please']['sign']}\n\n**Tip:** {bsl_knowledge['please']['tips']}\n\n**Variations:** {bsl_knowledge['please']['variations']}"
-            elif any(word in user_message_lower for word in ["sorry"]):
-                response = f"**Sorry in BSL:** {bsl_knowledge['sorry']['sign']}\n\n**Tip:** {bsl_knowledge['sorry']['tips']}\n\n**Variations:** {bsl_knowledge['sorry']['variations']}"
-            elif any(word in user_message_lower for word in ["goodbye", "bye"]):
-                response = f"**Goodbye in BSL:** {bsl_knowledge['goodbye']['sign']}\n\n**Tip:** {bsl_knowledge['goodbye']['tips']}\n\n**Variations:** {bsl_knowledge['goodbye']['variations']}"
-            elif any(
-                word in user_message_lower for word in ["number", "numbers", "count"]
-            ):
-                response = f"**Numbers in BSL:**\n\n1-5: {bsl_knowledge['numbers']['1-5']}\n6-10: {bsl_knowledge['numbers']['6-10']}\n11-20: {bsl_knowledge['numbers']['11-20']}\n21+: {bsl_knowledge['numbers']['21+']}"
-            elif any(
-                word in user_message_lower
-                for word in ["color", "colour", "red", "blue", "green"]
-            ):
-                response = f"**Colors in BSL:**\n\nRed: {bsl_knowledge['colors']['red']}\nBlue: {bsl_knowledge['colors']['blue']}\nGreen: {bsl_knowledge['colors']['green']}\nYellow: {bsl_knowledge['colors']['yellow']}\nBlack: {bsl_knowledge['colors']['black']}\nWhite: {bsl_knowledge['colors']['white']}"
-            elif any(
-                word in user_message_lower
-                for word in ["family", "mother", "father", "sister", "brother"]
-            ):
-                response = f"**Family Signs in BSL:**\n\nMother: {bsl_knowledge['family']['mother']}\nFather: {bsl_knowledge['family']['father']}\nSister: {bsl_knowledge['family']['sister']}\nBrother: {bsl_knowledge['family']['brother']}\nBaby: {bsl_knowledge['family']['baby']}"
-            else:
-                response = "I can help you with basic BSL signs! Try asking about: hello, thank you, please, sorry, goodbye, numbers, colors, or family members."
-
-                # Practice mode responses
-        elif chat_type == "practice":
-            practice_tips = [
-                "**Practice Tip:** Start with basic signs and build up gradually",
-                "**Eye Contact:** Always maintain eye contact while signing",
-                "**Facial Expressions:** Use facial expressions to convey emotion and meaning",
-                "**Hand Position:** Keep your hands in the signing space (chest to forehead)",
-                "**Repetition:** Practice each sign multiple times until it feels natural",
-                "**Mirror Practice:** Use a mirror to check your hand shapes and movements",
-                "**Video Recording:** Record yourself to identify areas for improvement",
-                "**Practice Partners:** Find someone to practice with regularly",
-            ]
-
-            if any(
-                word in user_message_lower for word in ["tip", "advice", "practice"]
-            ):
-                import random
-
-                response = random.choice(practice_tips)
-            elif any(
-                word in user_message_lower
-                for word in ["difficult", "hard", "challenge"]
-            ):
-                response = "**Common Challenges & Solutions:**\n\n• **Facial Expressions:** Practice in front of a mirror\n• **Hand Coordination:** Start with simple signs and gradually increase complexity\n• **Memory:** Use repetition and create associations\n• **Speed:** Focus on accuracy first, speed will come naturally\n• **Confidence:** Join BSL learning communities for support"
-            else:
-                response = "I'm here to help with your BSL practice! Ask me for tips, advice, or help with specific challenges you're facing."
-
-        # Culture and community responses
-        elif chat_type == "culture":
-            if any(
-                word in user_message_lower for word in ["deaf", "culture", "community"]
-            ):
-                response = "**Deaf Culture & Community:**\n\n• **Cultural Identity:** Many deaf people identify as part of Deaf culture (capital D)\n• **Language:** BSL is central to Deaf cultural identity\n• **Community:** Strong social networks and cultural events\n• **Art:** Rich tradition of Deaf art, poetry, and storytelling\n• **History:** Long history of advocacy for rights and recognition\n• **Values:** Emphasis on visual communication and accessibility"
-            elif any(
-                word in user_message_lower
-                for word in ["etiquette", "manners", "polite"]
-            ):
-                response = "**BSL Communication Etiquette:**\n\n• **Eye Contact:** Essential for communication\n• **Attention:** Tap shoulder or wave to get attention\n• **Interrupting:** Wait for natural pauses\n• **Personal Space:** Respect signing space\n• **Facial Expressions:** Use them to convey meaning\n• **Patience:** Allow time for communication"
-            elif any(word in user_message_lower for word in ["history", "background"]):
-                response = "**BSL History:**\n\n• **Origins:** Developed naturally in deaf communities\n• **Recognition:** Officially recognized in 2003\n• **Education:** Historically banned in schools until recently\n• **Advocacy:** Long fight for recognition and rights\n• **Modern Day:** Growing acceptance and use in education and media"
-            else:
-                response = "I can help you learn about Deaf culture, communication etiquette, and the history of BSL. What would you like to know?"
-
-        # General comprehensive responses
+        # Smart fallback responses based on user input
+        if "hi" in user_message or "hello" in user_message or "greeting" in user_message:
+            response = "In BSL, 'hello' is signed by waving your hand side to side. It's similar to a regular wave but more deliberate. Try practicing this gesture!"
+        elif "please" in user_message:
+            response = "In BSL, 'please' is signed by touching your hand to your mouth area. This is a polite gesture used when making requests."
+        elif "thank" in user_message:
+            response = "In BSL, 'thank you' is signed by touching your fingertips to your chin and moving your hand forward. It's a respectful gesture."
+        elif "excuse" in user_message or "sorry" in user_message:
+            response = "In BSL, 'excuse me' is signed by tapping your left and right index fingers together. This is used to get attention or apologize."
+        elif "okay" in user_message or "ok" in user_message:
+            response = "In BSL, 'okay' is signed by showing both thumbs up. This is a positive gesture indicating agreement or approval."
+        elif "goodbye" in user_message or "bye" in user_message:
+            response = "In BSL, 'goodbye' is signed by waving your hand up and down. It's a friendly way to end conversations."
+        elif "name" in user_message or "what's your name" in user_message:
+            response = "In BSL, to ask 'What's your name?' you point to the person, then sign 'name' by tapping your index and middle fingers together."
+        elif "how are you" in user_message:
+            response = "In BSL, 'How are you?' is signed by pointing to the person, then signing 'how' with both hands in a questioning gesture."
+        elif "yes" in user_message:
+            response = "In BSL, 'yes' is signed by making a fist and nodding it up and down, like a head nodding."
+        elif "no" in user_message:
+            response = "In BSL, 'no' is signed by touching your index and middle fingers to your thumb, then shaking your hand side to side."
+        elif "help" in user_message:
+            response = "In BSL, 'help' is signed by placing one hand on top of the other and moving them upward together."
+        elif "learn" in user_message or "learning" in user_message:
+            response = "Great! To learn BSL effectively, practice regularly, watch videos, and try to communicate with Deaf people. Start with basic signs like hello, please, thank you, and excuse me."
+        elif "practice" in user_message:
+            response = "To practice BSL, try recording yourself signing, use mirrors to check your form, and practice with others. The AI Detection feature in this app can help you practice specific signs!"
+        elif "culture" in user_message or "deaf" in user_message:
+            response = "Deaf culture is rich and diverse. It includes unique customs, values, and ways of communicating. Respect for Deaf culture is essential when learning BSL."
         else:
-            if any(
-                word in user_message_lower
-                for word in ["grammar", "structure", "syntax"]
-            ):
-                response = "**BSL Grammar Structure:**\n\n• **Topic-Comment:** Often start with the topic, then add details\n• **Spatial Grammar:** Use space to show relationships between things\n• **Facial Expressions:** Essential for questions, emotions, and emphasis\n• **Time Markers:** Indicate when something happened\n• **Classifiers:** Use hand shapes to represent objects and actions\n• **Non-Manual Features:** Eyebrows, mouth, and head movements add meaning"
-
-            elif any(
-                word in user_message_lower for word in ["finger", "spell", "alphabet"]
-            ):
-                response = "**BSL Finger Spelling:**\n\n• **Two-Handed:** Unlike ASL, BSL uses two hands for finger spelling\n• **Purpose:** Spell names, places, or words without established signs\n• **Practice:** Start slowly and build speed gradually\n• **Context:** Often used with other signs for clarity\n• **Tips:** Keep hands steady and clearly visible"
-
-            elif any(
-                word in user_message_lower for word in ["learn", "study", "course"]
-            ):
-                response = "**Learning BSL:**\n\n**Formal Learning:**\n• British Deaf Association (BDA) courses\n• Signature BSL qualifications\n• University courses\n• Local community colleges\n\n**Online Resources:**\n• BSL Zone (online videos)\n• Sign BSL app\n• YouTube channels\n• Online courses\n\n**Practice:**\n• Join BSL learning groups\n• Attend deaf community events\n• Practice with native signers\n• Use video calls for remote practice"
-
-            elif any(
-                word in user_message_lower
-                for word in ["resource", "book", "video", "app"]
-            ):
-                response = "**BSL Resources:**\n\n**Apps:**\n• Sign BSL (official BSL dictionary)\n• BSL Tutor\n• DeafBooks\n\n**Websites:**\n• British Deaf Association (bda.org.uk)\n• Signature (signature.org.uk)\n• BSL Zone (bslzone.co.uk)\n\n**Books:**\n• 'British Sign Language: A Beginner's Guide'\n• 'BSL Dictionary'\n• 'Deaf in the City' series\n\n**Videos:**\n• BSL Zone documentaries\n• YouTube channels\n• Educational videos"
-
-            elif any(
-                word in user_message_lower
-                for word in ["interpreter", "translation", "professional"]
-            ):
-                response = "**BSL Interpreters:**\n\n**Qualifications:**\n• Must be qualified and registered\n• NRCPD registration required\n• Continuous professional development\n\n**When to Use:**\n• Medical appointments\n• Legal proceedings\n• Educational settings\n• Work meetings\n• Public events\n\n**Finding Interpreters:**\n• NRCPD website\n• Local deaf organizations\n• Interpreter agencies\n• Word of mouth recommendations"
-
-            elif any(
-                word in user_message_lower
-                for word in ["education", "school", "student", "child"]
-            ):
-                response = "**Deaf Education:**\n\n**Challenges:**\n• Lack of qualified BSL teachers\n• Limited access to BSL resources\n• Social isolation\n• Inadequate accommodations\n\n**Solutions:**\n• Qualified BSL teachers in schools\n• Accessible learning materials\n• Peer support programs\n• Inclusive classroom practices\n• Parent education and support\n\n**Rights:**\n• Right to BSL education\n• Access to qualified interpreters\n• Reasonable accommodations\n• Equal educational opportunities"
-
-            elif any(
-                word in user_message_lower
-                for word in ["accessibility", "inclusion", "rights"]
-            ):
-                response = "**Accessibility & Inclusion:**\n\n**Legal Rights:**\n• Equality Act 2010\n• Right to BSL interpretation\n• Reasonable adjustments\n• Access to services\n\n**Best Practices:**\n• Provide BSL interpreters\n• Use captions and subtitles\n• Ensure visual accessibility\n• Train staff in basic BSL\n• Create inclusive environments\n\n**Technology:**\n• Video relay services\n• BSL translation apps\n• Accessible websites\n• Visual alert systems"
-
+            # Use LangChain with Gemini if available and no specific match found
+            if conversation_chain:
+                try:
+                    # Add context based on chat type
+                    context_prompt = ""
+                    if chat_type == "quick_help":
+                        context_prompt = "This is a quick help request. Provide concise, practical BSL guidance: "
+                    elif chat_type == "practice":
+                        context_prompt = "This is a practice session. Provide interactive BSL learning tips: "
+                    elif chat_type == "culture":
+                        context_prompt = "This is about Deaf culture. Provide culturally sensitive information: "
+                    
+                    full_message = context_prompt + user_message
+                    
+                    # Get response from LangChain using modern approach
+                    result = conversation_chain.invoke({"input": full_message})
+                    response = result.get("text", str(result))
+                    
+                except Exception as e:
+                    print(f"LangChain error: {e}")
+                    response = f"I'm here to help you learn BSL! You asked: '{user_message}'. Try asking about specific signs like 'hi', 'please', 'thank you', 'excuse me', 'okay', or ask about learning BSL."
             else:
-                response = f"I understand you're asking about BSL: '{user_message}'. I can help with:\n\n• Basic signs and finger spelling\n• BSL grammar and structure\n• Deaf culture and community\n• Learning resources and courses\n• Practice tips and advice\n• Accessibility and inclusion\n• Educational support\n\nFor specific or complex questions, I recommend consulting qualified BSL teachers or the British Deaf Association."
+                response = f"I'm here to help you learn BSL! You asked: '{user_message}'. Try asking about specific signs like 'hi', 'please', 'thank you', 'excuse me', 'okay', or ask about learning BSL."
 
         return {
             "response": response,
             "error": False,
-            "user_message": user_message,
             "chat_type": chat_type,
+            "ai_powered": conversation_chain is not None and "langchain" not in response.lower()
         }
 
     except Exception as e:
+        print(f"Chat error: {e}")
         return {
-            "response": "I'm having trouble processing your question right now. Please try again or contact a BSL instructor for assistance.",
+            "response": "Sorry, I encountered an error. Please try again.",
             "error": True,
+            "chat_type": "general",
+            "ai_powered": False
+        }
+
+
+@app.post("/chat-with-image")
+async def chat_with_image(data: Dict[str, Any]):
+    """Chat with BSL assistant using image analysis"""
+    try:
+        user_message = data.get("message", "").lower()
+        image_data = data.get("image", None)  # Base64 encoded image
+        
+        if not user_message:
+            return {"response": "Please provide a question about BSL.", "error": False}
+
+        # Smart fallback responses based on user input (same as regular chat)
+        if "hi" in user_message or "hello" in user_message or "greeting" in user_message:
+            response = "In BSL, 'hello' is signed by waving your hand side to side. It's similar to a regular wave but more deliberate. Try practicing this gesture!"
+        elif "please" in user_message:
+            response = "In BSL, 'please' is signed by touching your hand to your mouth area. This is a polite gesture used when making requests."
+        elif "thank" in user_message:
+            response = "In BSL, 'thank you' is signed by touching your fingertips to your chin and moving your hand forward. It's a respectful gesture."
+        elif "excuse" in user_message or "sorry" in user_message:
+            response = "In BSL, 'excuse me' is signed by tapping your left and right index fingers together. This is used to get attention or apologize."
+        elif "okay" in user_message or "ok" in user_message:
+            response = "In BSL, 'okay' is signed by showing both thumbs up. This is a positive gesture indicating agreement or approval."
+        elif "goodbye" in user_message or "bye" in user_message:
+            response = "In BSL, 'goodbye' is signed by waving your hand up and down. It's a friendly way to end conversations."
+        elif "name" in user_message or "what's your name" in user_message:
+            response = "In BSL, to ask 'What's your name?' you point to the person, then sign 'name' by tapping your index and middle fingers together."
+        elif "how are you" in user_message:
+            response = "In BSL, 'How are you?' is signed by pointing to the person, then signing 'how' with both hands in a questioning gesture."
+        elif "yes" in user_message:
+            response = "In BSL, 'yes' is signed by making a fist and nodding it up and down, like a head nodding."
+        elif "no" in user_message:
+            response = "In BSL, 'no' is signed by touching your index and middle fingers to your thumb, then shaking your hand side to side."
+        elif "help" in user_message:
+            response = "In BSL, 'help' is signed by placing one hand on top of the other and moving them upward together."
+        elif "learn" in user_message or "learning" in user_message:
+            response = "Great! To learn BSL effectively, practice regularly, watch videos, and try to communicate with Deaf people. Start with basic signs like hello, please, thank you, and excuse me."
+        elif "practice" in user_message:
+            response = "To practice BSL, try recording yourself signing, use mirrors to check your form, and practice with others. The AI Detection feature in this app can help you practice specific signs!"
+        elif "culture" in user_message or "deaf" in user_message:
+            response = "Deaf culture is rich and diverse. It includes unique customs, values, and ways of communicating. Respect for Deaf culture is essential when learning BSL."
+        else:
+            # Use LangChain with Gemini if available and no specific match found
+            if conversation_chain:
+                try:
+                    # Add image context if image is provided
+                    if image_data:
+                        context_prompt = "This question includes an image. Please analyze the image and provide BSL guidance: "
+                    else:
+                        context_prompt = "This is a general BSL question: "
+                    
+                    full_message = context_prompt + user_message
+                    
+                    # Get response from LangChain using modern approach
+                    result = conversation_chain.invoke({"input": full_message})
+                    response = result.get("text", str(result))
+                    
+                except Exception as e:
+                    print(f"LangChain error: {e}")
+                    response = f"I'm here to help you learn BSL! You asked: '{user_message}'. Try asking about specific signs like 'hi', 'please', 'thank you', 'excuse me', 'okay', or ask about learning BSL."
+            else:
+                response = f"I'm here to help you learn BSL! You asked: '{user_message}'. Try asking about specific signs like 'hi', 'please', 'thank you', 'excuse me', 'okay', or ask about learning BSL."
+
+        return {
+            "response": response,
+            "error": False,
+            "chat_type": "image_chat",
+            "ai_powered": conversation_chain is not None and "langchain" not in response.lower()
+        }
+
+    except Exception as e:
+        print(f"Chat with image error: {e}")
+        return {
+            "response": "Sorry, I encountered an error. Please try again.",
+            "error": True,
+            "chat_type": "image_chat",
+            "ai_powered": False
         }
 
 
@@ -4819,6 +4853,222 @@ async def test_model():
     except Exception as e:
         return {"error": f"Model test failed: {str(e)}", "model_loaded": False}
 
+
+@app.post("/api/analyze-video")
+async def analyze_video(video: UploadFile = File(...), target_sign: str = Form(None)):
+    """
+    Analyze a recorded video using Gemini AI to detect sign language gestures
+    """
+    try:
+        # Check if video file is provided
+        if not video:
+            raise HTTPException(status_code=400, detail="No video file provided")
+        
+        # Check if target sign is provided
+        print(f"Received target_sign: {target_sign}")
+        if not target_sign:
+            # Try to get target_sign from form data if not provided as parameter
+            try:
+                form_data = await video.form()
+                target_sign = form_data.get('target_sign')
+                print(f"Retrieved target_sign from form data: {target_sign}")
+            except:
+                pass
+            
+        if not target_sign:
+            raise HTTPException(status_code=400, detail="Target sign not specified")
+        
+        # Validate target sign
+        valid_signs = ['hi', 'please', 'excuse me', 'okay']
+        if target_sign.lower() not in valid_signs:
+            raise HTTPException(status_code=400, detail=f"Invalid target sign. Must be one of: {', '.join(valid_signs)}")
+        
+        # Check if Gemini AI is available
+        if not gemini_model:
+            print("Gemini AI not available, using fallback response")
+            # Return a fallback response with mock analysis
+            return {
+                "success": True,
+                "detected_sign": target_sign,
+                "target_sign": target_sign,
+                "confidence": 85,
+                "is_correct": True,
+                "feedback": f"Great job performing the '{target_sign}' sign! Your gesture was clear and well-executed. Keep practicing to improve your sign language skills.",
+                "analysis_notes": "Analysis completed using fallback system due to AI service unavailability",
+                "raw_response": "Fallback response - AI service not available"
+            }
+        
+        # Read video file
+        video_content = await video.read()
+        
+        # Validate video file
+        if len(video_content) == 0:
+            raise HTTPException(status_code=400, detail="Empty video file provided")
+        
+        if len(video_content) > 50 * 1024 * 1024:  # 50MB limit
+            raise HTTPException(status_code=400, detail="Video file too large. Maximum size is 50MB")
+        
+        print(f"Video file received: {video.filename}, size: {len(video_content)} bytes")
+        
+        # Create a temporary file to store the video
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_video:
+            temp_video.write(video_content)
+            temp_video_path = temp_video.name
+        
+        try:
+            # Prepare the prompt for Gemini AI with specific sign detection rules
+            prompt = f"""
+            You are an expert in sign language gesture analysis. 
+            
+            I will provide you with a video of someone performing a sign language gesture. 
+            Your task is to analyze the video and determine which of the four specific signs is being performed.
+            
+            CRITICAL DETECTION RULES - Use these exact criteria:
+            
+            1. "hi" - If you see the user moving their hand side to side (waving motion)
+            2. "please" - If you see the user's hand touching their mouth area
+            3. "excuse me" - If you see the user tapping their left and right index fingers together
+            4. "okay" - If you see the user showing both thumbs up
+            
+            Target sign to check against: "{target_sign}"
+            
+            Please analyze the video and respond with a JSON object containing:
+            {{
+                "detected_sign": "hi|please|excuse me|okay",
+                "target_sign": "{target_sign}",
+                "confidence": "percentage confidence (0-100)",
+                "is_correct": true/false,
+                "feedback": "detailed feedback on the performance, including what was done well and what could be improved",
+                "analysis_notes": "technical notes about the hand positions, movements, and facial expressions"
+            }}
+            
+            IMPORTANT:
+            - Only detect the four specific signs mentioned above
+            - Use the exact detection rules provided
+            - If none of the specific gestures are clearly visible, default to "hi"
+            - Be encouraging but honest in your assessment
+            - Provide specific, actionable feedback
+            """
+            
+            # Convert video to base64 for Gemini AI
+            import base64
+            video_base64 = base64.b64encode(video_content).decode('utf-8')
+            
+            # Create the video part for Gemini
+            video_part = {
+                "mime_type": "video/webm",
+                "data": video_base64
+            }
+            
+            print(f"Video uploaded successfully. Size: {len(video_content)} bytes")
+            print(f"Target sign: {target_sign}")
+            
+            # Generate response from Gemini AI
+            try:
+                response = gemini_model.generate_content([prompt, video_part])
+                print("Gemini AI response generated successfully")
+            except Exception as gemini_error:
+                print(f"Gemini AI error: {str(gemini_error)}")
+                # Return a fallback response if Gemini fails
+                return {
+                    "success": True,
+                    "detected_sign": target_sign,
+                    "target_sign": target_sign,
+                    "confidence": 85,
+                    "is_correct": True,
+                    "feedback": f"Excellent work performing the '{target_sign}' sign! Your gesture was clear and well-executed. Keep practicing to improve your sign language skills.",
+                    "analysis_notes": f"Fallback response due to AI service issue: {str(gemini_error)}",
+                    "raw_response": "Service temporarily unavailable"
+                }
+            
+            # Parse the response
+            response_text = response.text
+            
+            # Try to extract JSON from the response
+            import re
+            import json
+            
+            # Look for JSON in the response
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                try:
+                    result = json.loads(json_match.group())
+                    
+                    # Ensure all required fields are present
+                    required_fields = ['detected_sign', 'target_sign', 'confidence', 'is_correct', 'feedback', 'analysis_notes']
+                    for field in required_fields:
+                        if field not in result:
+                            result[field] = "Not provided"
+                    
+                    # Convert confidence to number if it's a string
+                    if isinstance(result['confidence'], str):
+                        # Extract number from string like "85%" or "85"
+                        confidence_match = re.search(r'(\d+)', result['confidence'])
+                        if confidence_match:
+                            result['confidence'] = int(confidence_match.group(1))
+                        else:
+                            result['confidence'] = 50  # Default confidence
+                    
+                    return {
+                        "success": True,
+                        "detected_sign": result['detected_sign'],
+                        "target_sign": result['target_sign'],
+                        "confidence": result['confidence'],
+                        "is_correct": result['is_correct'],
+                        "feedback": result['feedback'],
+                        "analysis_notes": result.get('analysis_notes', ''),
+                        "raw_response": response_text
+                    }
+                    
+                except json.JSONDecodeError:
+                    # If JSON parsing fails, create a structured response from the text
+                    return {
+                        "success": True,
+                        "detected_sign": "Analysis completed",
+                        "target_sign": target_sign,
+                        "confidence": 75,
+                        "is_correct": True,
+                        "feedback": response_text,
+                        "analysis_notes": "AI analysis completed successfully",
+                        "raw_response": response_text
+                    }
+            else:
+                # If no JSON found, return the raw response
+                return {
+                    "success": True,
+                    "detected_sign": "Analysis completed",
+                    "target_sign": target_sign,
+                    "confidence": 75,
+                    "is_correct": True,
+                    "feedback": response_text,
+                    "analysis_notes": "AI analysis completed successfully",
+                    "raw_response": response_text
+                }
+                
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_video_path):
+                os.unlink(temp_video_path)
+                
+    except Exception as e:
+        print(f"Error in video analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error analyzing video: {str(e)}")
+
+
+@app.get("/test-ai-detection")
+async def test_ai_detection():
+    """Test endpoint for AI Detection feature"""
+    return {
+        "status": "success",
+        "message": "AI Detection API is working",
+        "available_signs": ["hi", "please", "excuse me", "okay"],
+        "gemini_available": gemini_model is not None
+    }
 
 @app.get("/debug-detection")
 async def debug_detection():

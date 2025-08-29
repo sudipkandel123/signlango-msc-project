@@ -6,6 +6,7 @@ import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import uuid
+import time
 
 # LangChain and Google Gemini imports
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -1068,6 +1069,251 @@ async def chat_with_image_generation(data: Dict[str, Any]):
             "error": str(e),
             "session_id": session_id
         }
+
+@app.get("/training/signs")
+async def get_training_signs():
+    """Get available signs for training"""
+    training_signs = [
+        {
+            "id": "hi",
+            "name": "Hello/Hi",
+            "description": "Wave hand side to side",
+            "difficulty": "beginner",
+            "category": "greetings",
+            "instructions": [
+                "1. Raise your right hand to shoulder level",
+                "2. Open your palm facing forward",
+                "3. Move your hand from side to side in a waving motion",
+                "4. Keep your fingers together and relaxed"
+            ],
+            "tips": [
+                "Make sure your palm is clearly visible",
+                "Keep the movement smooth and natural",
+                "Practice in front of a mirror first"
+            ],
+            "videoUrl": "https://www.signbsl.com/sign/hello"
+        },
+        {
+            "id": "please",
+            "name": "Please",
+            "description": "Rub palm in circular motion on chest",
+            "difficulty": "beginner",
+            "category": "manners",
+            "instructions": [
+                "1. Place your right hand on your chest",
+                "2. Open your palm facing your chest",
+                "3. Move your hand in a circular motion",
+                "4. Keep the movement gentle and smooth"
+            ],
+            "tips": [
+                "The motion should be clockwise",
+                "Keep your fingers together",
+                "Don't press too hard on your chest"
+            ],
+            "videoUrl": "https://www.signbsl.com/sign/please"
+        },
+        {
+            "id": "excuse_me",
+            "name": "Excuse Me",
+            "description": "Tap shoulder to get attention",
+            "difficulty": "beginner",
+            "category": "manners",
+            "instructions": [
+                "1. Extend your right hand forward",
+                "2. Make a fist with your thumb on top",
+                "3. Tap your shoulder gently",
+                "4. Look at the person you want to get attention from"
+            ],
+            "tips": [
+                "The tap should be gentle, not forceful",
+                "Make eye contact when possible",
+                "Use this sign to politely interrupt"
+            ],
+            "videoUrl": "https://www.signbsl.com/sign/excuse-me"
+        },
+        {
+            "id": "okay",
+            "name": "Okay",
+            "description": "Give a thumbs up gesture",
+            "difficulty": "beginner",
+            "category": "responses",
+            "instructions": [
+                "1. Make a fist with your right hand",
+                "2. Extend your thumb upward",
+                "3. Hold the position briefly",
+                "4. You can nod your head for emphasis"
+            ],
+            "tips": [
+                "Keep your other fingers in a fist",
+                "The thumb should point straight up",
+                "This sign is universally understood"
+            ],
+            "videoUrl": "https://www.signbsl.com/sign/okay"
+        }
+    ]
+    return {"signs": training_signs, "count": len(training_signs)}
+
+
+@app.post("/training/start-session")
+async def start_training_session(data: Dict[str, Any]):
+    """Start a new training session"""
+    try:
+        sign_id = data.get("sign_id")
+        session_type = data.get("session_type", "practice")  # practice, test, learn
+        
+        # Validate sign
+        training_signs = await get_training_signs()
+        sign = next((s for s in training_signs["signs"] if s["id"] == sign_id), None)
+        
+        if not sign:
+            raise HTTPException(status_code=400, detail="Invalid sign ID")
+        
+        session_id = f"session_{sign_id}_{int(time.time())}"
+        
+        return {
+            "session_id": session_id,
+            "sign": sign,
+            "session_type": session_type,
+            "status": "started",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error starting session: {str(e)}")
+
+
+@app.post("/training/process-frame")
+async def process_training_frame(data: Dict[str, Any]):
+    """Process a frame for training or detection"""
+    try:
+        frame_data = data.get("frame_data")
+        session_id = data.get("session_id")
+        sign_id = data.get("sign_id")
+        mode = data.get("mode", "detection")  # detection, training
+        
+        if not frame_data:
+            raise HTTPException(status_code=400, detail="Frame data required")
+        
+        # For now, return a simulated response
+        # In a real implementation, this would process the frame through the model
+        
+        if mode == "training":
+            # Training mode - collect data
+            return {
+                "status": "frame_captured",
+                "session_id": session_id,
+                "sign_id": sign_id,
+                "frame_count": 1,
+                "message": "Frame captured for training"
+            }
+        else:
+            # Detection mode - predict sign
+            import random
+            confidence = random.uniform(0.3, 0.95)
+            is_correct = confidence > 0.7
+            
+            return {
+                "status": "detection_complete",
+                "session_id": session_id,
+                "sign_id": sign_id,
+                "detected_sign": sign_id if is_correct else random.choice(["hi", "please", "excuse_me", "okay"]),
+                "confidence": confidence,
+                "is_correct": is_correct,
+                "feedback": "Great job!" if is_correct else "Try again, focus on the hand position"
+            }
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing frame: {str(e)}")
+
+
+@app.post("/training/end-session")
+async def end_training_session(data: Dict[str, Any]):
+    """End a training session and get results"""
+    try:
+        session_id = data.get("session_id")
+        sign_id = data.get("sign_id")
+        total_frames = data.get("total_frames", 0)
+        correct_detections = data.get("correct_detections", 0)
+        
+        # Calculate score
+        accuracy = (correct_detections / total_frames * 100) if total_frames > 0 else 0
+        
+        # Determine performance level
+        if accuracy >= 90:
+            performance = "excellent"
+            message = "Outstanding! You've mastered this sign!"
+        elif accuracy >= 75:
+            performance = "good"
+            message = "Well done! Keep practicing to improve further."
+        elif accuracy >= 60:
+            performance = "fair"
+            message = "Good effort! More practice will help you improve."
+        else:
+            performance = "needs_improvement"
+            message = "Keep practicing! Focus on the hand position and movement."
+        
+        return {
+            "session_id": session_id,
+            "sign_id": sign_id,
+            "total_frames": total_frames,
+            "correct_detections": correct_detections,
+            "accuracy": accuracy,
+            "performance": performance,
+            "message": message,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error ending session: {str(e)}")
+
+
+@app.get("/training/progress/{user_id}")
+async def get_training_progress(user_id: str):
+    """Get user's training progress"""
+    try:
+        # Simulated progress data
+        # In a real app, this would come from a database
+        progress = {
+            "user_id": user_id,
+            "total_sessions": 15,
+            "total_accuracy": 78.5,
+            "signs_learned": ["hi", "please", "okay"],
+            "current_streak": 5,
+            "best_accuracy": 95.2,
+            "signs_progress": {
+                "hi": {"sessions": 5, "accuracy": 85.0, "mastered": True},
+                "please": {"sessions": 4, "accuracy": 72.5, "mastered": False},
+                "excuse_me": {"sessions": 3, "accuracy": 65.0, "mastered": False},
+                "okay": {"sessions": 3, "accuracy": 90.0, "mastered": True}
+            }
+        }
+        
+        return progress
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting progress: {str(e)}")
+
+
+@app.post("/training/update-model")
+async def update_training_model(data: Dict[str, Any]):
+    """Update the model with new training data"""
+    try:
+        training_data = data.get("training_data", [])
+        model_version = data.get("model_version", "current")
+        
+        # Simulated model update
+        # In a real implementation, this would retrain the model
+        
+        return {
+            "status": "model_updated",
+            "model_version": f"{model_version}_updated",
+            "training_samples": len(training_data),
+            "message": "Model updated successfully with new training data",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating model: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
