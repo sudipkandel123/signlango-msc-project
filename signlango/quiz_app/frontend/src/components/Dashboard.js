@@ -33,16 +33,31 @@ function Dashboard() {
         setLoading(true);
         
         // Fetch facts
-        const factsResponse = await axios.get('http://localhost:8000/facts');
-        setFacts(factsResponse.data.facts || []);
+        try {
+          const factsResponse = await axios.get('http://localhost:8000/facts');
+          setFacts(factsResponse.data.facts || []);
+        } catch (error) {
+          console.error('Error fetching facts:', error);
+          setFacts([]);
+        }
         
         // Fetch quiz data
-        const quizResponse = await axios.get('http://localhost:8000/quiz');
-        setQuizData(quizResponse.data.questions || []);
+        try {
+          const quizResponse = await axios.get('http://localhost:8000/quiz');
+          setQuizData(quizResponse.data.questions || []);
+        } catch (error) {
+          console.error('Error fetching quiz data:', error);
+          setQuizData([]);
+        }
         
         // Fetch chat suggestions
-        const suggestionsResponse = await axios.get('http://localhost:8000/chat-suggestions');
-        setChatSuggestions(suggestionsResponse.data.suggestions || []);
+        try {
+          const suggestionsResponse = await axios.get('http://localhost:8000/chat-suggestions');
+          setChatSuggestions(suggestionsResponse.data.suggestions || []);
+        } catch (error) {
+          console.error('Error fetching chat suggestions:', error);
+          setChatSuggestions([]);
+        }
         
         // Generate realistic user stats based on facts and quiz data
         // Note: totalFacts and totalQuestions are calculated but not used in current implementation
@@ -621,7 +636,7 @@ function Dashboard() {
           <div className="dashboard-card signs-card">
             <h2>Most Detected Signs</h2>
             <div className="signs-list">
-              {mostDetectedSigns.map((item, index) => (
+              {Array.isArray(mostDetectedSigns) && mostDetectedSigns.map((item, index) => (
                 <div key={index} className="sign-item">
                   <div className="sign-rank">#{index + 1}</div>
                   <div className="sign-name">{item.sign}</div>
@@ -629,13 +644,21 @@ function Dashboard() {
                   <div className="sign-accuracy">{item.accuracy}%</div>
                 </div>
               ))}
+              {(!Array.isArray(mostDetectedSigns) || mostDetectedSigns.length === 0) && (
+                <div className="sign-item">
+                  <div className="sign-rank">#1</div>
+                  <div className="sign-name">No data</div>
+                  <div className="sign-count">0 times</div>
+                  <div className="sign-accuracy">0%</div>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="dashboard-card badges-card">
             <h2>Badges Earned</h2>
             <div className="badges-grid">
-              {badges.map(badge => (
+              {Array.isArray(badges) && badges.map(badge => (
                 <div key={badge.id} className={`badge-item ${badge.earned ? 'earned' : 'locked'}`}>
                   <div className="badge-icon">{badge.icon}</div>
                   <div className="badge-info">
@@ -656,13 +679,22 @@ function Dashboard() {
                   {badge.earned && <div className="badge-check">✓</div>}
                 </div>
               ))}
+              {(!Array.isArray(badges) || badges.length === 0) && (
+                <div className="badge-item locked">
+                  <div className="badge-icon">🏆</div>
+                  <div className="badge-info">
+                    <div className="badge-name">No badges available</div>
+                    <div className="badge-description">Start learning to earn badges!</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="dashboard-card leaderboard-card">
             <h2>Leaderboard</h2>
             <div className="leaderboard-list">
-              {leaderboard.map((user, index) => (
+              {Array.isArray(leaderboard) && leaderboard.map((user, index) => (
                 <div key={index} className={`leaderboard-item ${user.isCurrentUser ? 'current-user' : ''}`}>
                   <div className="leaderboard-rank">#{index + 1}</div>
                   <div className="leaderboard-avatar">{user.avatar}</div>
@@ -673,6 +705,17 @@ function Dashboard() {
                   <div className="leaderboard-score">{user.score} pts</div>
                 </div>
               ))}
+              {(!Array.isArray(leaderboard) || leaderboard.length === 0) && (
+                <div className="leaderboard-item">
+                  <div className="leaderboard-rank">#1</div>
+                  <div className="leaderboard-avatar">👤</div>
+                  <div className="leaderboard-info">
+                    <div className="leaderboard-name">No data</div>
+                    <div className="leaderboard-level">-</div>
+                  </div>
+                  <div className="leaderboard-score">0 pts</div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -748,7 +791,7 @@ function Dashboard() {
           <div className="dashboard-card facts-card">
             <h2>Learning Resources</h2>
             <div className="facts-list">
-              {facts.slice(0, 5).map((fact, index) => (
+              {Array.isArray(facts) && facts.slice(0, 5).map((fact, index) => (
                 <div key={index} className="fact-item">
                   <div className="fact-icon">📚</div>
                   <div className="fact-content">
@@ -757,6 +800,15 @@ function Dashboard() {
                   </div>
                 </div>
               ))}
+              {(!Array.isArray(facts) || facts.length === 0) && (
+                <div className="fact-item">
+                  <div className="fact-icon">📚</div>
+                  <div className="fact-content">
+                    <div className="fact-title">No facts available</div>
+                    <div className="fact-text">Please check your connection and try again.</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -764,15 +816,15 @@ function Dashboard() {
             <h2>Quiz Progress</h2>
             <div className="quiz-stats">
               <div className="quiz-stat">
-                <div className="quiz-number">{quizData.length}</div>
+                <div className="quiz-number">{Array.isArray(quizData) ? quizData.length : 0}</div>
                 <div className="quiz-label">Available Questions</div>
               </div>
               <div className="quiz-stat">
-                <div className="quiz-number">{Math.floor(quizData.length * 0.7)}</div>
+                <div className="quiz-number">{Array.isArray(quizData) ? Math.floor(quizData.length * 0.7) : 0}</div>
                 <div className="quiz-label">Questions Attempted</div>
               </div>
               <div className="quiz-stat">
-                <div className="quiz-number">{Math.floor(quizData.length * 0.6)}</div>
+                <div className="quiz-number">{Array.isArray(quizData) ? Math.floor(quizData.length * 0.6) : 0}</div>
                 <div className="quiz-label">Correct Answers</div>
               </div>
             </div>
@@ -785,7 +837,7 @@ function Dashboard() {
           <div className="dashboard-card activity-card">
             <h2>Recent Activity</h2>
             <div className="activity-list">
-              {recentActivity.map((activity, index) => (
+              {Array.isArray(recentActivity) && recentActivity.map((activity, index) => (
                 <div key={index} className="activity-item">
                   <div className="activity-sign">{activity.sign}</div>
                   <div className="activity-confidence">{Math.round(activity.confidence * 100)}%</div>
@@ -795,18 +847,32 @@ function Dashboard() {
                   <div className="activity-time">{activity.timestamp}</div>
                 </div>
               ))}
+              {(!Array.isArray(recentActivity) || recentActivity.length === 0) && (
+                <div className="activity-item">
+                  <div className="activity-sign">No activity</div>
+                  <div className="activity-confidence">-</div>
+                  <div className="activity-status">-</div>
+                  <div className="activity-time">-</div>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="dashboard-card suggestions-card">
             <h2>Chat Suggestions</h2>
             <div className="suggestions-list">
-              {chatSuggestions.slice(0, 6).map((suggestion, index) => (
+              {Array.isArray(chatSuggestions) && chatSuggestions.slice(0, 6).map((suggestion, index) => (
                 <div key={index} className="suggestion-item">
                   <div className="suggestion-icon">💬</div>
                   <div className="suggestion-text">{suggestion}</div>
                 </div>
               ))}
+              {(!Array.isArray(chatSuggestions) || chatSuggestions.length === 0) && (
+                <div className="suggestion-item">
+                  <div className="suggestion-icon">💬</div>
+                  <div className="suggestion-text">No suggestions available</div>
+                </div>
+              )}
             </div>
           </div>
         </div>

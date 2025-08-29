@@ -126,8 +126,7 @@ function Quiz() {
     if (selectedAnswer === null || showResult) return;
 
     const currentQuestion = questions[currentQuestionIndex];
-    const correctAnswerIndex = currentQuestion.correct_answer;
-    const correctAnswerText = currentQuestion.options[correctAnswerIndex];
+    const correctAnswerText = currentQuestion.correct_answer;
     const isCorrect = selectedAnswer === correctAnswerText;
     
     if (isCorrect) {
@@ -522,8 +521,8 @@ function Quiz() {
           <div className="result-section">
             <div className="result-header">
               <h2>Answer Result</h2>
-              <div className={`result-indicator ${selectedAnswer === currentQuestion.options[currentQuestion.correct_answer] ? 'correct' : 'incorrect'}`}>
-                {selectedAnswer === currentQuestion.options[currentQuestion.correct_answer] ? '✅ Correct!' : '❌ Incorrect'}
+              <div className={`result-indicator ${selectedAnswer === currentQuestion.correct_answer ? 'correct' : 'incorrect'}`}>
+                {selectedAnswer === currentQuestion.correct_answer ? '✅ Correct!' : '❌ Incorrect'}
               </div>
             </div>
 
@@ -534,7 +533,7 @@ function Quiz() {
               </div>
               <div className="result-item">
                 <span className="result-label">Correct Answer:</span>
-                <span className="result-value correct">{currentQuestion.options[currentQuestion.correct_answer]}</span>
+                <span className="result-value correct">{currentQuestion.correct_answer}</span>
               </div>
             </div>
 

@@ -143,15 +143,41 @@ function Videos() {
                   <div className="sign-tips">
                     <h4>Practice Tips</h4>
                     <p>
-                      {video.title === 'Hello' && 'Make a gentle wave motion with your hand, palm facing forward. Start from your chin and move outward in a smooth arc. Keep your fingers together and relaxed.'}
-                      {video.title === 'Please' && 'Place your flat hand on your chest and make a small circular motion. The movement should be gentle and polite, showing respect and courtesy.'}
-                      {video.title === 'Excuse Me' && 'Gently tap your shoulder with your fingertips. Keep your hand open and make a light, respectful tapping motion to get attention politely.'}
-                      {video.title === 'Okay' && 'Form a circle with your thumb and index finger, keeping other fingers extended. Hold your hand up with the circle facing forward, showing approval or agreement.'}
-                      {video.title === 'Thank You' && 'Touch your chin with your fingertips, then move your hand forward and down. The gesture should convey genuine gratitude and appreciation.'}
-                      {video.title === 'Sorry' && 'Make a fist and place it on your chest, then make a small circular motion. The movement should express sincere regret and apology.'}
-                      {video.title === 'Good' && 'Start with your hand at your chin, then move it forward and down in a smooth motion. Keep your palm flat and fingers together to show positive approval.'}
-                      {video.title === 'Bad' && 'Start with your hand at your chin, then move it downward and away from your body. The motion should clearly indicate disapproval or something negative.'}
-                      {!['Hello', 'Please', 'Excuse Me', 'Okay', 'Thank You', 'Sorry', 'Good', 'Bad'].includes(video.title) && 'Practice this sign slowly at first, focusing on the correct hand shape and movement. Gradually increase your speed while maintaining accuracy.'}
+                    {video.title === 'Hello' && 
+                    'Make a gentle wave motion with your hand, palm facing forward. Move side by side. Keep your fingers together and relaxed.'
+                  }
+
+                  {video.title === 'Please' && 
+                    'Place your flat palm moving towards your chin.'
+                  }
+
+                  {video.title === 'Excuse Me' && 
+                    'Tap both index fingers 2 times and move your palm facing inwards towards chest.'
+                  }
+
+                  {video.title === 'Okay' && 
+                    'Move your folded palm with thumb facing outward towards the opposite person.'
+                  }
+
+                  {video.title === 'Thank You' && 
+                    'Thank you and please are similar and use the same gesture.'
+                  }
+
+                  {video.title === 'Sorry' && 
+                    'Move your hand towards your head with a sorry motion in your mouth.'
+                  }
+
+                  {video.title === 'Good' && 
+                    'Show a single thumbs-up on the right-hand side for “Good.”'
+                  }
+
+                  {video.title === 'Bad' && 
+                    'Start with your hand at your chin with the little finger extended, then move it downward and away from your body to indicate disapproval.'
+                  }
+
+                  {!['Hello', 'Please', 'Excuse Me', 'Okay', 'Thank You', 'Sorry', 'Good', 'Bad'].includes(video.title) && 
+                    'Practice this sign slowly at first, focusing on the correct hand shape and movement. Gradually increase your speed while maintaining accuracy.'
+                  }
                     </p>
                   </div>
                 </div>

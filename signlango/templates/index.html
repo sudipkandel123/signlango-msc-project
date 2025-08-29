@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>British Sign Language Detection System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            max-width: 1200px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+        }
+        
+        .video-container {
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .video-feed {
+            width: 100%;
+            height: 480px;
+            object-fit: cover;
+        }
+        
+        .controls-section {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin: 20px;
+        }
+        
+        .btn-custom {
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .btn-training {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            border: none;
+            color: white;
+        }
+        
+        .btn-training:hover {
+            background: linear-gradient(135deg, #ee5a24, #ff6b6b);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(238, 90, 36, 0.4);
+        }
+        
+        .btn-prediction {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            border: none;
+            color: white;
+        }
+        
+        .btn-prediction:hover {
+            background: linear-gradient(135deg, #44a08d, #4ecdc4);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
+        }
+        
+        .btn-stop {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            border: none;
+            color: white;
+        }
+        
+        .btn-stop:hover {
+            background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+            transform: translateY(-2px);
+        }
+        
+        .status-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-idle { background-color: #95a5a6; }
+        .status-training { background-color: #f39c12; }
+        .status-prediction { background-color: #27ae60; }
+        
+        .signs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .sign-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .sign-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .sign-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .detection-results {
+            background: #e8f5e8;
+            border-left: 5px solid #27ae60;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 10px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert-custom {
+            border-radius: 15px;
+            border: none;
+            margin: 20px;
+        }
+        
+        /* BSL Learning Styles */
+        .nav-tabs .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            border: none;
+            border-radius: 10px 10px 0 0;
+            margin-right: 5px;
+            padding: 12px 20px;
+            font-weight: 600;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: #667eea;
+            background: white;
+            border: none;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .bsl-learning-container {
+            padding: 20px;
+        }
+        
+        .bsl-header h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .bsl-practice-card, .bsl-info-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            height: 100%;
+        }
+        
+        .sign-selector select {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 10px 15px;
+        }
+        
+        .demo-video {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px dashed #dee2e6;
+        }
+        
+        .video-placeholder {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 1.1rem;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .demo-content {
+            width: 100%;
+        }
+        
+        .demo-text {
+            margin-bottom: 10px;
+        }
+        
+        .demo-video-links {
+            font-size: 0.8rem;
+        }
+        
+        .demo-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .demo-link:hover {
+            color: #5a6fd8;
+            text-decoration: underline;
+        }
+        
+        .recording-area {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #dee2e6;
+            transition: all 0.3s ease;
+        }
+        
+        .recording-area.recording {
+            border-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .webcam-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        #webcam {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+        }
+        
+        .recording-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: none;
+        }
+        
+        .recording-overlay.visible {
+            display: block;
+        }
+        
+        .progress {
+            height: 10px;
+            border-radius: 10px;
+            background: #e9ecef;
+        }
+        
+        .progress-bar {
+            background: #667eea;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        
+        .status {
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+        }
+        
+        .controls {
+            text-align: center;
+        }
+        
+        .controls .btn {
+            margin: 0 5px;
+            border-radius: 25px;
+            padding: 10px 25px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+        }
+        
+        .feedback {
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .feedback.correct {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .feedback.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .feedback.error {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .bsl-instructions {
+            margin-top: 20px;
+        }
+        
+        .instruction-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .step-content h6 {
+            margin: 0;
+            color: #495057;
+        }
+        
+        .step-content p {
+            margin: 0;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .sign-guide {
+            margin-top: 15px;
+        }
+        
+        .sign-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .sign-item:last-child {
+            border-bottom: none;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <!-- Header -->
+            <div class="header">
+                <h1><i class="fas fa-hands"></i> British Sign Language Detection System</h1>
+                <p class="mb-0">Real-time sign language recognition using AI and computer vision</p>
+                
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-tabs mt-3" id="mainTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="detection-tab" data-bs-toggle="tab" data-bs-target="#detection" type="button" role="tab">
+                            <i class="fas fa-eye"></i> Real-time Detection
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="learning-tab" data-bs-toggle="tab" data-bs-target="#learning" type="button" role="tab">
+                            <i class="fas fa-graduation-cap"></i> BSL Learning
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="tab-content" id="mainTabContent">
+                <!-- Real-time Detection Tab -->
+                <div class="tab-pane fade show active" id="detection" role="tabpanel">
+                    <div class="row">
+                        <!-- Video Feed -->
+                        <div class="col-lg-8">
+                            <div class="video-container">
+                                <img src="{{ url_for('video_feed') }}" class="video-feed" alt="Video Feed">
+                            </div>
+                        </div>
+                        
+                        <!-- Controls -->
+                        <div class="col-lg-4">
+                            <div class="controls-section">
+                                <h4><i class="fas fa-cogs"></i> Controls</h4>
+                                
+                                <!-- Mode Buttons -->
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-custom btn-training" onclick="startTraining()">
+                                        <i class="fas fa-play"></i> Start Training
+                                    </button>
+                                    <button class="btn btn-custom btn-prediction" onclick="startPrediction()">
+                                        <i class="fas fa-eye"></i> Start Prediction
+                                    </button>
+                                    <button class="btn btn-custom btn-stop" onclick="stopProcessing()">
+                                        <i class="fas fa-stop"></i> Stop Processing
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="resetPredictions()">
+                                        <i class="fas fa-redo"></i> Reset Predictions
+                                    </button>
+                                </div>
+                                
+                                <!-- Status -->
+                                <div class="status-card mt-4">
+                                    <h5><i class="fas fa-info-circle"></i> System Status</h5>
+                                    <p><span class="status-indicator status-idle" id="statusIndicator"></span>
+                                       <span id="currentMode">Idle</span></p>
+                                    <p><strong>Model Status:</strong> <span id="modelStatus">Not Loaded</span></p>
+                                    <p><strong>Accuracy:</strong> <span id="currentAccuracy">0%</span></p>
+                                </div>
+                                
+                                <!-- Detection Results -->
+                                <div class="detection-results" id="detectionResults" style="display: none;">
+                                    <h5><i class="fas fa-list"></i> Detected Signs</h5>
+                                    <div id="detectedSigns">No signs detected yet...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- BSL Learning Tab -->
+                <div class="tab-pane fade" id="learning" role="tabpanel">
+                    <div class="bsl-learning-container">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="bsl-header text-center mb-4">
+                                    <h2><i class="fas fa-graduation-cap"></i> BSL Learning Practice</h2>
+                                    <p>Practice British Sign Language with AI feedback - Duolingo style!</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <div class="bsl-practice-card">
+                                    <h4><i class="fas fa-video"></i> Practice Session</h4>
+                                    
+                                    <div class="sign-selector mb-3">
+                                        <label for="targetSign" class="form-label">Choose a sign to practice:</label>
+                                        <select class="form-select" id="targetSign">
+                                            <option value="Hello">Hello</option>
+                                            <option value="Excuse">Excuse</option>
+                                            <option value="Please">Please</option>
+                                            <option value="Okay">Okay</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="demo-video mb-3">
+                                        <h5><i class="fas fa-play-circle"></i> Watch the Demo</h5>
+                                        <div class="video-placeholder" id="demoPlaceholder">
+                                            <div class="demo-content">
+                                                <div class="demo-text">Select a sign and click "Start Practice" to begin</div>
+                                                <div class="demo-video-links mt-2">
+                                                    <small>Reference videos:</small><br>
+                                                    <a href="https://www.british-sign.co.uk/british-sign-language/how-to-sign/hello/" target="_blank" class="demo-link">Hello Sign</a> |
+                                                    <a href="https://www.british-sign.co.uk/british-sign-language/how-to-sign/please/" target="_blank" class="demo-link">Please Sign</a> |
+                                                    <a href="https://www.british-sign.co.uk/british-sign-language/how-to-sign/excuse-me/" target="_blank" class="demo-link">Excuse Me Sign</a> |
+                                                    <a href="https://www.british-sign.co.uk/british-sign-language/how-to-sign/okay/" target="_blank" class="demo-link">Okay Sign</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="recording-area mb-3" id="recordingArea">
+                                        <h5><i class="fas fa-camera"></i> Your Turn</h5>
+                                        <div class="webcam-container">
+                                            <video id="webcam" autoplay muted></video>
+                                            <div class="recording-overlay" id="recordingOverlay">
+                                                🔴 Recording...
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="progress mb-3">
+                                        <div class="progress-bar" id="progressFill"></div>
+                                    </div>
+                                    
+                                    <div class="status mb-3" id="status">Ready to start</div>
+                                    
+                                    <div class="controls">
+                                        <button class="btn btn-primary" id="startBtn">Start Practice</button>
+                                        <button class="btn btn-danger hidden" id="stopBtn">Stop Recording</button>
+                                        <button class="btn btn-success hidden" id="retryBtn">Try Again</button>
+                                    </div>
+                                    
+                                    <div class="loading mt-3" id="loading">
+                                        <div class="spinner"></div>
+                                        <p>Analyzing your sign...</p>
+                                    </div>
+                                    
+                                    <div class="feedback mt-3" id="feedback"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-6">
+                                <div class="bsl-info-card">
+                                    <h4><i class="fas fa-info-circle"></i> How to Practice</h4>
+                                    <div class="bsl-instructions">
+                                        <div class="instruction-step">
+                                            <div class="step-number">1</div>
+                                            <div class="step-content">
+                                                <h6>Choose a Sign</h6>
+                                                <p>Select from Hello, Excuse, Please, or Okay</p>
+                                            </div>
+                                        </div>
+                                        <div class="instruction-step">
+                                            <div class="step-number">2</div>
+                                            <div class="step-content">
+                                                <h6>Watch Demo</h6>
+                                                <p>Learn the correct BSL gesture</p>
+                                            </div>
+                                        </div>
+                                        <div class="instruction-step">
+                                            <div class="step-number">3</div>
+                                            <div class="step-content">
+                                                <h6>Practice</h6>
+                                                <p>Show your sign to the camera</p>
+                                            </div>
+                                        </div>
+                                        <div class="instruction-step">
+                                            <div class="step-number">4</div>
+                                            <div class="step-content">
+                                                <h6>Get Feedback</h6>
+                                                <p>Receive instant AI analysis</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="bsl-signs-info mt-4">
+                                        <h5><i class="fas fa-hands"></i> BSL Signs Guide</h5>
+                                        <div class="sign-guide">
+                                            <div class="sign-item">
+                                                <strong>Hello:</strong> Wave-like hand movement
+                                            </div>
+                                            <div class="sign-item">
+                                                <strong>Excuse:</strong> Hand moving across chest
+                                            </div>
+                                            <div class="sign-item">
+                                                <strong>Please:</strong> Flat hand moving in circular motion
+                                            </div>
+                                            <div class="sign-item">
+                                                <strong>Okay:</strong> Thumb and index finger forming a circle
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Supported Signs -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="status-card">
+                        <h4><i class="fas fa-hands-helping"></i> Supported British Sign Language Signs</h4>
+                        <div class="signs-grid">
+                            <div class="sign-card">
+                                <div class="sign-icon">👋</div>
+                                <h5>Hi</h5>
+                                <p>Wave hello gesture</p>
+                            </div>
+                            <div class="sign-card">
+                                <div class="sign-icon">🙏</div>
+                                <h5>Please</h5>
+                                <p>Palms together in prayer position</p>
+                            </div>
+                            <div class="sign-card">
+                                <div class="sign-icon">🤚</div>
+                                <h5>Excuse Me</h5>
+                                <p>Hand moving across chest</p>
+                            </div>
+                            <div class="sign-card">
+                                <div class="sign-icon">👌</div>
+                                <h5>Okay</h5>
+                                <p>Thumb and index finger forming a circle</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Loading Indicator -->
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>Processing...</p>
+            </div>
+            
+            <!-- Alerts -->
+            <div id="alertContainer"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let statusUpdateInterval;
+        
+        // Initialize status updates
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus();
+            statusUpdateInterval = setInterval(updateStatus, 1000);
+        });
+        
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-custom alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            alertContainer.appendChild(alertDiv);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+        
+        function showLoading() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+        
+        async function startTraining() {
+            showLoading();
+            try {
+                const response = await fetch('/start_training', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showAlert('Training mode started!', 'success');
+                } else {
+                    showAlert(data.message, 'danger');
+                }
+            } catch (error) {
+                showAlert('Error starting training: ' + error.message, 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function startPrediction() {
+            showLoading();
+            try {
+                const response = await fetch('/start_prediction', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showAlert('Prediction mode started!', 'success');
+                } else {
+                    showAlert(data.message, 'warning');
+                }
+            } catch (error) {
+                showAlert('Error starting prediction: ' + error.message, 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function stopProcessing() {
+            try {
+                const response = await fetch('/stop_processing', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showAlert('Processing stopped!', 'info');
+                }
+            } catch (error) {
+                showAlert('Error stopping processing: ' + error.message, 'danger');
+            }
+        }
+        
+        async function resetPredictions() {
+            try {
+                const response = await fetch('/reset_predictions', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showAlert('Predictions reset!', 'info');
+                }
+            } catch (error) {
+                showAlert('Error resetting predictions: ' + error.message, 'danger');
+            }
+        }
+        
+        async function updateStatus() {
+            try {
+                const response = await fetch('/get_status');
+                const data = await response.json();
+                
+                // Update status indicator
+                const statusIndicator = document.getElementById('statusIndicator');
+                statusIndicator.className = `status-indicator status-${data.mode}`;
+                
+                // Update current mode
+                document.getElementById('currentMode').textContent = data.mode.charAt(0).toUpperCase() + data.mode.slice(1);
+                
+                // Update model status
+                document.getElementById('modelStatus').textContent = data.model_loaded ? 'Loaded' : 'Not Loaded';
+                
+                // Update accuracy
+                document.getElementById('currentAccuracy').textContent = data.accuracy;
+                
+                // Update detected signs
+                const detectionResults = document.getElementById('detectionResults');
+                const detectedSigns = document.getElementById('detectedSigns');
+                
+                if (data.detected_signs && data.detected_signs.length > 0) {
+                    detectedSigns.textContent = data.detected_signs.join(' → ');
+                    detectionResults.style.display = 'block';
+                } else {
+                    detectedSigns.textContent = 'No signs detected yet...';
+                    detectionResults.style.display = 'none';
+                }
+                
+            } catch (error) {
+                console.error('Error updating status:', error);
+            }
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (statusUpdateInterval) {
+                clearInterval(statusUpdateInterval);
+            }
+        });
+        
+        // BSL Learning JavaScript
+        class BSLPractice {
+            constructor() {
+                this.stream = null;
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+                this.isRecording = false;
+                this.targetSign = 'Hello';
+                
+                this.initializeElements();
+                this.bindEvents();
+            }
+
+            initializeElements() {
+                this.startBtn = document.getElementById('startBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.retryBtn = document.getElementById('retryBtn');
+                this.webcam = document.getElementById('webcam');
+                this.recordingArea = document.getElementById('recordingArea');
+                this.recordingOverlay = document.getElementById('recordingOverlay');
+                this.progressFill = document.getElementById('progressFill');
+                this.status = document.getElementById('status');
+                this.loading = document.getElementById('loading');
+                this.feedback = document.getElementById('feedback');
+                this.targetSignSelect = document.getElementById('targetSign');
+            }
+
+            bindEvents() {
+                this.startBtn.addEventListener('click', () => this.startPractice());
+                this.stopBtn.addEventListener('click', () => this.stopRecording());
+                this.retryBtn.addEventListener('click', () => this.resetPractice());
+                this.targetSignSelect.addEventListener('change', (e) => {
+                    this.targetSign = e.target.value;
+                });
+            }
+
+            async startPractice() {
+                try {
+                    this.updateStatus('Setting up camera...');
+                    await this.setupCamera();
+                    
+                    this.updateStatus('Camera ready! Click "Start Practice" to begin');
+                    this.startBtn.textContent = 'Start Practice';
+                    this.startBtn.onclick = () => this.beginRecording();
+                    
+                } catch (error) {
+                    this.showFeedback('Please allow camera access to practice', 'error');
+                    console.error('Camera setup failed:', error);
+                }
+            }
+
+            async setupCamera() {
+                this.stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480 },
+                    audio: false
+                });
+                this.webcam.srcObject = this.stream;
+            }
+
+            async beginRecording() {
+                this.targetSign = this.targetSignSelect.value;
+                this.updateStatus(`Practice: ${this.targetSign}`);
+                
+                // Show demo instruction
+                document.getElementById('demoPlaceholder').innerHTML = 
+                    `<div class="demo-content">
+                        <div class="demo-text">Watch and copy the sign for: <strong>${this.targetSign}</strong></div>
+                        <div class="demo-video-links">
+                            <small>Recording will start in 3 seconds...</small>
+                        </div>
+                    </div>`;
+                
+                // Wait 3 seconds
+                await this.delay(3000);
+                
+                this.startRecording();
+            }
+
+            startRecording() {
+                if (!this.stream) {
+                    this.showFeedback('Camera not available', 'error');
+                    return;
+                }
+
+                this.recordedChunks = [];
+                this.isRecording = true;
+                
+                // Update UI
+                this.recordingArea.classList.add('recording');
+                this.recordingOverlay.classList.add('visible');
+                this.startBtn.classList.add('hidden');
+                this.stopBtn.classList.remove('hidden');
+                
+                // Start recording
+                this.mediaRecorder = new MediaRecorder(this.stream, {
+                    mimeType: 'video/webm;codecs=vp9'
+                });
+                
+                this.mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        this.recordedChunks.push(event.data);
+                    }
+                };
+                
+                this.mediaRecorder.onstop = () => this.processRecording();
+                
+                this.mediaRecorder.start();
+                this.updateStatus('Recording... Show your sign!');
+                
+                // Auto-stop after 3 seconds
+                setTimeout(() => {
+                    if (this.isRecording) {
+                        this.stopRecording();
+                    }
+                }, 3000);
+                
+                // Update progress bar
+                this.updateProgress(0);
+                const progressInterval = setInterval(() => {
+                    if (!this.isRecording) {
+                        clearInterval(progressInterval);
+                        return;
+                    }
+                    const progress = (Date.now() - this.mediaRecorder.startTime) / 3000 * 100;
+                    this.updateProgress(Math.min(progress, 100));
+                }, 100);
+            }
+
+            stopRecording() {
+                if (!this.isRecording) return;
+                
+                this.isRecording = false;
+                this.mediaRecorder.stop();
+                
+                // Update UI
+                this.recordingArea.classList.remove('recording');
+                this.recordingOverlay.classList.remove('visible');
+                this.stopBtn.classList.add('hidden');
+                this.loading.classList.remove('hidden');
+                
+                this.updateStatus('Processing your sign...');
+            }
+
+            async processRecording() {
+                try {
+                    const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+                    
+                    // Convert to MP4 format for better compatibility
+                    const formData = new FormData();
+                    formData.append('video', blob, 'practice.webm');
+                    formData.append('target_sign', this.targetSign);
+                    
+                    const response = await fetch('/upload-bsl-video', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.showResult(result);
+                    } else {
+                        this.showFeedback(`Error: ${result.error}`, 'error');
+                    }
+                    
+                } catch (error) {
+                    this.showFeedback('Failed to process video', 'error');
+                    console.error('Processing failed:', error);
+                } finally {
+                    this.loading.classList.add('hidden');
+                    this.retryBtn.classList.remove('hidden');
+                }
+            }
+
+            showResult(result) {
+                if (result.is_correct) {
+                    this.showFeedback(`🎉 Correct! You signed "${result.prediction}" perfectly!`, 'correct');
+                    this.updateStatus('Great job! Try another sign or practice again.');
+                } else {
+                    this.showFeedback(`Try again! You signed "${result.prediction}" but we were looking for "${result.target_sign}"`, 'incorrect');
+                    this.updateStatus('Keep practicing!');
+                }
+            }
+
+            showFeedback(message, type) {
+                this.feedback.textContent = message;
+                this.feedback.className = `feedback ${type}`;
+                this.feedback.style.display = 'block';
+            }
+
+            resetPractice() {
+                // Reset UI
+                this.recordingArea.classList.remove('recording');
+                this.recordingOverlay.classList.remove('visible');
+                this.startBtn.classList.remove('hidden');
+                this.stopBtn.classList.add('hidden');
+                this.retryBtn.classList.add('hidden');
+                this.loading.classList.add('hidden');
+                this.feedback.style.display = 'none';
+                this.updateProgress(0);
+                this.updateStatus('Ready to practice again');
+                
+                // Reset demo placeholder
+                document.getElementById('demoPlaceholder').innerHTML = 
+                    `<div class="demo-content">
+                        <div class="demo-text">Select a sign and click "Start Practice" to begin</div>
+                        <div class="demo-video-links mt-2">
+                            <small>Reference videos:</small><br>
+                            <a href="https://www.british-sign.co.uk/british-sign-language/how-to-sign/hello/" target="_blank" class="demo-link">Hello Sign</a> |
+                            <a href="https://www.british-sign.co.uk/british-sign-language/how-to-sign/please/" target="_blank" class="demo-link">Please Sign</a> |
+                            <a href="https://www.british-sign.co.uk/british-sign-language/how-to-sign/excuse-me/" target="_blank" class="demo-link">Excuse Me Sign</a> |
+                            <a href="https://www.british-sign.co.uk/british-sign-language/how-to-sign/okay/" target="_blank" class="demo-link">Okay Sign</a>
+                        </div>
+                    </div>`;
+            }
+
+            updateStatus(message) {
+                this.status.textContent = message;
+            }
+
+            updateProgress(percentage) {
+                this.progressFill.style.width = `${percentage}%`;
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Initialize BSL Practice when learning tab is shown
+        let bslPractice = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize BSL Practice when learning tab is clicked
+            const learningTab = document.getElementById('learning-tab');
+            learningTab.addEventListener('click', function() {
+                if (!bslPractice) {
+                    bslPractice = new BSLPractice();
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

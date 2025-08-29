@@ -782,25 +782,26 @@ async def generate_image(data: Dict[str, Any]):
             # For now, let's use a curated list of high-quality BSL-related images
             # These are real images from free stock photo services
             bsl_images = {
-                "hello": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "thank you": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "goodbye": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "please": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "sorry": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "yes": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "no": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "family": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "alphabet": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "numbers": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "colors": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "sign language": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "deaf": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "communication": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "hands": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "gesture": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "finger": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                "signing": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop"
-            }
+    "hello": "https://lead-academy.org/blog/hello-in-sign-language/",            # BSL 'hello' sign photo/image reference[4]
+    "thank you": "https://www.istockphoto.com/photos/thank-you-sign-language",   # BSL 'thank you' sign image gallery[12]
+    "goodbye": "https://www.istockphoto.com/photos/goodbye-in-sign-language",    # BSL 'goodbye' sign image gallery[19]
+    "please": "https://lead-academy.org/blog/please-in-sign-language/",          # BSL 'please' sign photo/image reference[1]
+    "sorry": "https://lead-academy.org/blog/sorry-in-sign-language/",            # BSL 'sorry' sign photo/image reference
+    "yes": "https://lead-academy.org/blog/yes-in-sign-language/",                # BSL 'yes' sign photo/image reference
+    "no": "https://lead-academy.org/blog/yes-in-sign-language/",                 # BSL 'no' sign is often explained alongside yes
+    "family": "https://www.british-sign.co.uk/british-sign-language/dictionary/",# BSL 'family' sign image reference
+    "alphabet": "https://www.british-sign.co.uk/british-sign-language/dictionary/", # BSL 'alphabet' image reference
+    "numbers": "https://www.british-sign.co.uk/british-sign-language/learn-bsl/numbers/", # BSL 'numbers' sign image reference
+    "colors": "https://www.british-sign.co.uk/british-sign-language/dictionary/",     # BSL 'colors' sign image reference
+    "sign language": "https://www.british-sign.co.uk/british-sign-language/dictionary/", # BSL 'sign language' reference image
+    "deaf": "https://www.british-sign.co.uk/british-sign-language/dictionary/",   # BSL 'deaf' sign image reference
+    "communication": "https://www.british-sign.co.uk/british-sign-language/dictionary/", # BSL 'communication' sign image reference
+    "hands": "https://www.british-sign.co.uk/british-sign-language/dictionary/",  # BSL 'hands' sign image reference
+    "gesture": "https://www.british-sign.co.uk/british-sign-language/dictionary/",# BSL 'gesture' image reference
+    "finger": "https://www.british-sign.co.uk/british-sign-language/dictionary/", # BSL 'finger' image reference
+    "signing": "https://www.british-sign.co.uk/british-sign-language/dictionary/",# BSL 'signing' image reference
+}
+
             
             # Find the best matching image
             best_match = None
@@ -920,25 +921,26 @@ async def chat_with_image_generation(data: Dict[str, Any]):
             try:
                 # Create a curated list of BSL-related images
                 bsl_images = {
-                    "hello": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "thank you": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "goodbye": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "please": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "sorry": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "yes": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "no": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "family": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "alphabet": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "numbers": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "colors": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "sign language": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "deaf": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "communication": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "hands": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "gesture": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "finger": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop",
-                    "signing": "https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg?w=400&h=300&fit=crop"
-                }
+    "hello": "https://lead-academy.org/blog/hello-in-sign-language/",            # BSL 'hello' sign photo/image reference[4]
+    "thank you": "https://www.istockphoto.com/photos/thank-you-sign-language",   # BSL 'thank you' sign image gallery[12]
+    "goodbye": "https://www.istockphoto.com/photos/goodbye-in-sign-language",    # BSL 'goodbye' sign image gallery[19]
+    "please": "https://lead-academy.org/blog/please-in-sign-language/",          # BSL 'please' sign photo/image reference[1]
+    "sorry": "https://lead-academy.org/blog/sorry-in-sign-language/",            # BSL 'sorry' sign photo/image reference
+    "yes": "https://lead-academy.org/blog/yes-in-sign-language/",                # BSL 'yes' sign photo/image reference
+    "no": "https://lead-academy.org/blog/yes-in-sign-language/",                 # BSL 'no' sign is often explained alongside yes
+    "family": "https://www.british-sign.co.uk/british-sign-language/dictionary/",# BSL 'family' sign image reference
+    "alphabet": "https://www.british-sign.co.uk/british-sign-language/dictionary/", # BSL 'alphabet' image reference
+    "numbers": "https://www.british-sign.co.uk/british-sign-language/learn-bsl/numbers/", # BSL 'numbers' sign image reference
+    "colors": "https://www.british-sign.co.uk/british-sign-language/dictionary/",     # BSL 'colors' sign image reference
+    "sign language": "https://www.british-sign.co.uk/british-sign-language/dictionary/", # BSL 'sign language' reference image
+    "deaf": "https://www.british-sign.co.uk/british-sign-language/dictionary/",   # BSL 'deaf' sign image reference
+    "communication": "https://www.british-sign.co.uk/british-sign-language/dictionary/", # BSL 'communication' sign image reference
+    "hands": "https://www.british-sign.co.uk/british-sign-language/dictionary/",  # BSL 'hands' sign image reference
+    "gesture": "https://www.british-sign.co.uk/british-sign-language/dictionary/",# BSL 'gesture' image reference
+    "finger": "https://www.british-sign.co.uk/british-sign-language/dictionary/", # BSL 'finger' image reference
+    "signing": "https://www.british-sign.co.uk/british-sign-language/dictionary/",# BSL 'signing' image reference
+}
+
                 
                 # Find the best matching image
                 best_match = None

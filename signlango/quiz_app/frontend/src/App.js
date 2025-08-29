@@ -3,10 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Home from './components/Home';
 import Facts from './components/Facts';
 import Quiz from './components/Quiz';
-import SignDetection from './components/SignDetection';
 import Chat from './components/Chat';
 import Videos from './components/Videos';
 import Dashboard from './components/Dashboard';
+import VideoRecording from './components/VideoRecording';
 import Footer from './components/Footer';
 import './index.css';
 
@@ -25,7 +25,7 @@ function App() {
               <Link to="/facts" className="nav-link">Facts</Link>
               <Link to="/videos" className="nav-link">Videos</Link>
               <Link to="/quiz" className="nav-link">Quiz</Link>
-              <Link to="/sign-detection" className="nav-link">Sign Detection</Link>
+              <Link to="/ai-detection" className="nav-link">AI Detection</Link>
               <Link to="/chat" className="nav-link">Chat</Link>
             </div>
           </div>
@@ -38,7 +38,7 @@ function App() {
             <Route path="/facts" element={<Facts />} />
             <Route path="/videos" element={<Videos />} />
             <Route path="/quiz" element={<Quiz />} />
-            <Route path="/sign-detection" element={<SignDetection />} />
+            <Route path="/ai-detection" element={<VideoRecording />} />
             <Route path="/chat" element={<Chat />} />
           </Routes>
         </main>

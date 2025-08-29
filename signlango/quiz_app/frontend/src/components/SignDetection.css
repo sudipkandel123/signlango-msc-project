@@ -1,0 +1,493 @@
+/* Sign Detection Component Styles */
+
+.sign-detection {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.sign-detection .card {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  min-height: 600px;
+}
+
+/* Sign Selection Screen */
+.sign-selection {
+  text-align: center;
+}
+
+.selection-header h1 {
+  color: #2c3e50;
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.selection-header p {
+  color: #7f8c8d;
+  font-size: 1.1rem;
+  margin-bottom: 40px;
+}
+
+.signs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+  margin-top: 30px;
+}
+
+.sign-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 15px;
+  padding: 30px 25px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.sign-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+  border-color: #667eea;
+}
+
+.sign-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.sign-card:hover::before {
+  left: 100%;
+}
+
+.sign-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.sign-card h3 {
+  color: white;
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.sign-card p {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.sign-action {
+  color: white;
+  font-weight: 600;
+  font-size: 1.1rem;
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+
+.sign-card:hover .sign-action {
+  opacity: 1;
+}
+
+/* Video Watch Screen */
+.video-watch {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.video-header {
+  text-align: center;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.back-btn {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.3s ease;
+}
+
+.back-btn:hover {
+  background: #5a6268;
+}
+
+.video-header h2 {
+  color: #2c3e50;
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.video-header p {
+  color: #7f8c8d;
+  font-size: 1.1rem;
+}
+
+.video-container {
+  margin-bottom: 30px;
+}
+
+.video-embed-wrapper {
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.practice-tips {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 30px;
+}
+
+.practice-tips h3 {
+  color: #2c3e50;
+  font-size: 1.3rem;
+  margin-bottom: 15px;
+}
+
+.practice-tips ul {
+  list-style: none;
+  padding: 0;
+}
+
+.practice-tips li {
+  color: #495057;
+  padding: 8px 0;
+  position: relative;
+  padding-left: 25px;
+}
+
+.practice-tips li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #28a745;
+  font-weight: bold;
+}
+
+.practice-actions {
+  text-align: center;
+}
+
+/* Practice Screen */
+.practice-screen {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.practice-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.practice-header h2 {
+  color: #2c3e50;
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.practice-header p {
+  color: #7f8c8d;
+  font-size: 1.1rem;
+}
+
+.camera-section {
+  margin-bottom: 30px;
+}
+
+.camera-container {
+  display: flex;
+  justify-content: center;
+}
+
+.video-wrapper {
+  position: relative;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.countdown-overlay,
+.recording-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 1.2rem;
+}
+
+.countdown-number {
+  font-size: 4rem;
+  font-weight: bold;
+  color: #ffc107;
+  margin-bottom: 10px;
+}
+
+.recording-indicator {
+  color: #dc3545;
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.camera-placeholder {
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 15px;
+  padding: 60px 40px;
+  text-align: center;
+  color: #6c757d;
+  font-size: 1.1rem;
+}
+
+.practice-controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.camera-error {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+  color: #721c24;
+  margin-top: 20px;
+}
+
+/* Result Screen */
+.result-screen {
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.result-content {
+  padding: 40px 20px;
+}
+
+.success-result,
+.failure-result {
+  margin-bottom: 30px;
+}
+
+.success-icon,
+.failure-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.success-result h2 {
+  color: #28a745;
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+}
+
+.failure-result h2 {
+  color: #dc3545;
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+}
+
+.success-result p,
+.failure-result p {
+  color: #6c757d;
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.result-details {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.result-details p {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #495057;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+/* Button Styles */
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+}
+
+.btn-warning {
+  background: #ffc107;
+  color: #212529;
+}
+
+.btn-warning:hover {
+  background: #e0a800;
+  transform: translateY(-2px);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .sign-detection {
+    padding: 15px;
+  }
+  
+  .sign-detection .card {
+    padding: 20px;
+  }
+  
+  .selection-header h1 {
+    font-size: 2rem;
+  }
+  
+  .signs-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .sign-card {
+    padding: 25px 20px;
+  }
+  
+  .video-header h2 {
+    font-size: 1.5rem;
+  }
+  
+  .back-btn {
+    position: static;
+    transform: none;
+    margin-bottom: 20px;
+  }
+  
+  .practice-controls,
+  .result-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .countdown-number {
+    font-size: 3rem;
+  }
+  
+  .success-icon,
+  .failure-icon {
+    font-size: 3rem;
+  }
+  
+  .success-result h2,
+  .failure-result h2 {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .sign-detection .card {
+    padding: 15px;
+  }
+  
+  .selection-header h1 {
+    font-size: 1.8rem;
+  }
+  
+  .sign-card {
+    padding: 20px 15px;
+  }
+  
+  .sign-icon {
+    font-size: 2.5rem;
+  }
+  
+  .video-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .practice-header h2 {
+    font-size: 1.5rem;
+  }
+} 

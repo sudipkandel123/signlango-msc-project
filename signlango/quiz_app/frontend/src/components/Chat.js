@@ -19,6 +19,14 @@ function Chat() {
   useEffect(() => {
     if (messages.length > 0) {
       scrollToBottom();
+      // Initialize SignBSL widget if any message contains a video embed
+      if (window.signbsl && document.querySelector('.signbsldata-embed')) {
+        try {
+          window.signbsl.init();
+        } catch (e) {
+          // no-op
+        }
+      }
     }
   }, [messages.length]);
 
@@ -27,6 +35,21 @@ function Chat() {
     loadCommonQuestions();
   }, []);
 
+  useEffect(() => {
+    // Load SignBSL widget script once
+    if (!window.signbsl && !document.querySelector('script[src="https://embed.signbsl.com/widgets.js"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://embed.signbsl.com/widgets.js';
+      script.async = true;
+      script.charset = 'utf-8';
+      script.onload = () => {
+        if (window.signbsl) {
+          try { window.signbsl.init(); } catch (_) {}
+        }
+      };
+      document.head.appendChild(script);
+    }
+  }, []);
 
 
   const loadCommonQuestions = async () => {
@@ -66,7 +89,12 @@ function Chat() {
         timestamp: new Date().toLocaleTimeString(),
         imageData: response.data.image_data,
         imageFormat: response.data.image_format,
-        prompt: response.data.prompt
+        prompt: response.data.prompt,
+        imageUrl: response.data.image_url,
+        videoProvider: response.data.video_provider,
+        videoVidref: response.data.video_vidref,
+        videoLink: response.data.video_link,
+        videoTitle: response.data.video_title
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -107,7 +135,12 @@ function Chat() {
         timestamp: new Date().toLocaleTimeString(),
         imageData: response.data.image_data,
         imageFormat: response.data.image_format,
-        prompt: response.data.prompt
+        prompt: response.data.prompt,
+        imageUrl: response.data.image_url,
+        videoProvider: response.data.video_provider,
+        videoVidref: response.data.video_vidref,
+        videoLink: response.data.video_link,
+        videoTitle: response.data.video_title
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -210,23 +243,25 @@ function Chat() {
           <div className="common-questions-panel" style={{ scrollBehavior: 'auto' }}>
             <h3>Commonly Asked Questions</h3>
             <div className="questions-grid">
-              <div className="question-category">
-                <h4>General BSL Questions</h4>
-                <div className="question-list">
-                  {Array.isArray(commonQuestions) && commonQuestions.map((q, index) => (
-                    <button
-                      key={index}
-                      className="question-btn"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleCommonQuestionClick(q.question);
-                      }}
-                    >
-                      <span className="question-text">{q.question}</span>
-                    </button>
-                  ))}
+              {Object.keys(commonQuestions).map((category) => (
+                <div key={category} className="question-category">
+                  <h4>{category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</h4>
+                  <div className="question-list">
+                    {commonQuestions[category].map((q, index) => (
+                      <button
+                        key={index}
+                        className="question-btn"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleCommonQuestionClick(q.question);
+                        }}
+                      >
+                        <span className="question-text">{q.question}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
         )}
@@ -265,19 +300,54 @@ function Chat() {
                   />
                   
                   {/* Display generated image if available */}
-                  {message.imageData && (
+                  {(message.imageUrl || message.imageData) && (
                     <div className="generated-image-container">
-                      <img 
-                        src={`data:${message.imageFormat};base64,${message.imageData}`}
-                        alt={message.prompt || "Generated image"}
-                        className="generated-image"
-                      />
+                      {message.imageUrl ? (
+                        <img 
+                          src={message.imageUrl}
+                          alt={message.prompt || "BSL reference image"}
+                          className="generated-image"
+                        />
+                      ) : (
+                        <img 
+                          src={`data:${message.imageFormat};base64,${message.imageData}`}
+                          alt={message.prompt || "Generated image"}
+                          className="generated-image"
+                        />
+                      )}
                       <button 
                         className="download-image-btn"
-                        onClick={() => downloadImage(message.imageData, message.prompt)}
+                        onClick={() => {
+                          if (message.imageData) {
+                            downloadImage(message.imageData, message.prompt);
+                          } else if (message.imageUrl) {
+                            window.open(message.imageUrl, '_blank');
+                          }
+                        }}
                       >
                         📥 Download Image
                       </button>
+                    </div>
+                  )}
+
+                  {/* Display embedded video if available */}
+                  {message.videoProvider === 'signbsl' && message.videoVidref && (
+                    <div className="embedded-video-container">
+                      <blockquote 
+                        className="signbsldata-embed" 
+                        data-vidref={message.videoVidref}
+                        style={{
+                          borderRadius: '10px',
+                          border: 'none',
+                          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
+                          margin: '8px 0',
+                          padding: '0'
+                        }}
+                      >
+                        <a href={message.videoLink || '#'}>
+                          Watch how to sign '{(message.videoTitle || 'this sign').toLowerCase()}' in British Sign Language
+                        </a>
+                      </blockquote>
                     </div>
                   )}
                   

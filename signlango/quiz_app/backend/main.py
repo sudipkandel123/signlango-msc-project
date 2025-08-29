@@ -19,6 +19,7 @@ from langchain.schema import HumanMessage, AIMessage, SystemMessage
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
+from PIL import Image, ImageDraw, ImageFont
 
 # Load environment variables
 load_dotenv()
@@ -4342,9 +4343,18 @@ async def chat_with_bsl_assistant(data: Dict[str, Any]):
                     
                     full_message = context_prompt + user_message
                     
-                    # Get response from LangChain using modern approach
-                    result = conversation_chain.invoke({"input": full_message})
-                    response = result.get("text", str(result))
+                    # Get response from LangChain using modern approach with timeout
+                    import asyncio
+                    try:
+                        # Set a timeout for the API call
+                        result = await asyncio.wait_for(
+                            asyncio.to_thread(conversation_chain.invoke, {"input": full_message}),
+                            timeout=10.0  # 10 second timeout
+                        )
+                        response = result.get("text", str(result))
+                    except asyncio.TimeoutError:
+                        print("LangChain timeout - using fallback response")
+                        response = f"I'm here to help you learn BSL! You asked: '{user_message}'. Try asking about specific signs like 'hi', 'please', 'thank you', 'excuse me', 'okay', or ask about learning BSL."
                     
                 except Exception as e:
                     print(f"LangChain error: {e}")
@@ -4378,6 +4388,137 @@ async def chat_with_image(data: Dict[str, Any]):
         
         if not user_message:
             return {"response": "Please provide a question about BSL.", "error": False}
+
+        # Video request detection for common BSL signs
+        video_keywords = ["video", "show me", "play", "watch", "clip"]
+        is_video_request = any(keyword in user_message for keyword in video_keywords)
+        if is_video_request:
+            # Map simple sign names to SignBSL vidrefs and links
+            sign_to_video = {
+                "hello": {"vidref": "cnyia0upyj", "link": "https://www.signbsl.com/sign/hello", "title": "Hello"},
+                "hi": {"vidref": "cnyia0upyj", "link": "https://www.signbsl.com/sign/hello", "title": "Hello"},
+                "please": {"vidref": "f7a1xiefkh", "link": "https://www.signbsl.com/sign/please", "title": "Please"},
+                "excuse me": {"vidref": "26ojajoxrq", "link": "https://www.signbsl.com/sign/excuse-me", "title": "Excuse Me"},
+                "okay": {"vidref": "cj1jijzqra", "link": "https://www.signbsl.com/sign/okay", "title": "Okay"},
+                "thank you": {"vidref": "b7heyqequm", "link": "https://www.signbsl.com/sign/thank-you", "title": "Thank You"},
+                "sorry": {"vidref": "ddt71uvidh", "link": "https://www.signbsl.com/sign/sorry", "title": "Sorry"},
+            }
+            matched = None
+            for sign_key, meta in sign_to_video.items():
+                if sign_key in user_message:
+                    matched = meta
+                    break
+            if matched:
+                return {
+                    "response": f"Playing the BSL video for '{matched['title']}'.",
+                    "error": False,
+                    "chat_type": "video_chat",
+                    "ai_powered": False,
+                    "video_provider": "signbsl",
+                    "video_vidref": matched["vidref"],
+                    "video_link": matched["link"],
+                    "video_title": matched["title"],
+                }
+            else:
+                # If no direct match, guide the user
+                return {
+                    "response": "I can show videos for signs like 'hello', 'please', 'excuse me', 'okay', 'thank you', and 'sorry'. Try asking: 'show me the video of BSL hello'.",
+                    "error": False,
+                    "chat_type": "video_chat",
+                    "ai_powered": False
+                }
+
+        # Check if user is requesting image generation
+        image_keywords = ["generate image", "create image", "draw", "picture of", "image of", "show me"]
+        is_image_request = any(keyword in user_message for keyword in image_keywords)
+
+        if is_image_request:
+            # Extract a simple prompt by removing the keyword phrases
+            prompt = user_message
+            for keyword in image_keywords:
+                prompt = prompt.replace(keyword, "").strip()
+            if not prompt:
+                prompt = "bsl themed"
+
+            # First try curated external image links for known signs
+            curated_images = {
+                "hello": "https://lead-academy.org/blog/hello-in-sign-language/",
+                "hi": "https://lead-academy.org/blog/hello-in-sign-language/",
+                "thank you": "https://www.istockphoto.com/photos/thank-you-sign-language",
+                "goodbye": "https://www.istockphoto.com/photos/goodbye-in-sign-language",
+                "please": "https://lead-academy.org/blog/please-in-sign-language/",
+                "sorry": "https://lead-academy.org/blog/sorry-in-sign-language/",
+                "yes": "https://lead-academy.org/blog/yes-in-sign-language/",
+                "no": "https://lead-academy.org/blog/yes-in-sign-language/",
+                "family": "https://www.british-sign.co.uk/british-sign-language/dictionary/",
+                "alphabet": "https://www.british-sign.co.uk/british-sign-language/dictionary/",
+                "numbers": "https://www.british-sign.co.uk/british-sign-language/learn-bsl/numbers/",
+                "colors": "https://www.british-sign.co.uk/british-sign-language/dictionary/",
+                "sign language": "https://www.british-sign.co.uk/british-sign-language/dictionary/",
+                "deaf": "https://www.british-sign.co.uk/british-sign-language/dictionary/",
+                "communication": "https://www.british-sign.co.uk/british-sign-language/dictionary/",
+                "hands": "https://www.british-sign.co.uk/british-sign-language/dictionary/",
+                "gesture": "https://www.british-sign.co.uk/british-sign-language/dictionary/",
+            }
+            matched_key = None
+            for key in curated_images.keys():
+                if key in prompt:
+                    matched_key = key
+                    break
+            if matched_key:
+                return {
+                    "response": f"Here's a helpful BSL image reference for '{matched_key}'.",
+                    "error": False,
+                    "chat_type": "image_chat",
+                    "ai_powered": False,
+                    "image_url": curated_images[matched_key],
+                    "prompt": prompt,
+                }
+
+            # If no curated link found, generate a simple placeholder image
+            try:
+                width, height = 400, 300
+                img = Image.new('RGB', (width, height), color='#667eea')
+                draw = ImageDraw.Draw(img)
+
+                for i in range(height):
+                    color_val = int(102 + (i * 0.5))
+                    draw.line([(0, i), (width, i)], fill=(min(color_val, 255), 126, 234))
+
+                try:
+                    font = ImageFont.load_default()
+                except Exception:
+                    font = None
+
+                display_text = f"BSL: {prompt[:25]}..." if len(prompt) > 25 else f"BSL: {prompt}"
+                text_bbox = draw.textbbox((0, 0), display_text, font=font)
+                text_w = text_bbox[2] - text_bbox[0]
+                text_h = text_bbox[3] - text_bbox[1]
+                x = (width - text_w) // 2
+                y = (height - text_h) // 2
+
+                draw.text((x + 1, y + 1), display_text, fill='#333333', font=font)
+                draw.text((x, y), display_text, fill='white', font=font)
+
+                draw.rectangle([0, 0, width - 1, height - 1], outline='white', width=2)
+
+                img_buffer = io.BytesIO()
+                img.save(img_buffer, format='PNG')
+                img_buffer.seek(0)
+                image_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+
+                return {
+                    "response": f"I couldn't find a curated image link. Here's a generated placeholder for: '{prompt}'.",
+                    "error": False,
+                    "chat_type": "image_chat",
+                    "ai_powered": conversation_chain is not None,
+                    "image_data": image_base64,
+                    "image_format": "image/png",
+                    "prompt": prompt
+                }
+            except Exception as e:
+                print(f"Image generation failed: {e}")
+                # If image generation fails, continue to text fallback below
 
         # Smart fallback responses based on user input (same as regular chat)
         if "hi" in user_message or "hello" in user_message or "greeting" in user_message:
@@ -4420,9 +4561,16 @@ async def chat_with_image(data: Dict[str, Any]):
                     
                     full_message = context_prompt + user_message
                     
-                    # Get response from LangChain using modern approach
-                    result = conversation_chain.invoke({"input": full_message})
-                    response = result.get("text", str(result))
+                    import asyncio
+                    try:
+                        result = await asyncio.wait_for(
+                            asyncio.to_thread(conversation_chain.invoke, {"input": full_message}),
+                            timeout=10.0
+                        )
+                        response = result.get("text", str(result))
+                    except asyncio.TimeoutError:
+                        print("LangChain timeout - using fallback response")
+                        response = f"I'm here to help you learn BSL! You asked: '{user_message}'. Try asking about specific signs like 'hi', 'please', 'thank you', 'excuse me', 'okay', or ask about learning BSL."
                     
                 except Exception as e:
                     print(f"LangChain error: {e}")
@@ -4449,31 +4597,42 @@ async def chat_with_image(data: Dict[str, Any]):
 
 @app.get("/common-questions")
 async def get_common_questions():
-    """Get commonly asked BSL questions"""
+    """Get commonly asked BSL questions with detailed responses"""
     common_questions = {
         "basic_signs": [
             {
                 "question": "How do I sign 'hello' in BSL?",
+                "answer": "In BSL, 'hello' is signed by waving your hand side to side. It's similar to a regular wave but more deliberate. Try practicing this gesture!",
                 "category": "basic_signs",
                 "difficulty": "beginner",
             },
             {
                 "question": "What's the BSL sign for 'thank you'?",
+                "answer": "In BSL, 'thank you' is signed by touching your fingertips to your chin and moving your hand forward. It's a respectful gesture.",
                 "category": "basic_signs",
                 "difficulty": "beginner",
             },
             {
                 "question": "How do I sign 'please' in BSL?",
+                "answer": "In BSL, 'please' is signed by touching your hand to your mouth area. This is a polite gesture used when making requests.",
                 "category": "basic_signs",
                 "difficulty": "beginner",
             },
             {
                 "question": "What's the sign for 'sorry' in BSL?",
+                "answer": "In BSL, 'excuse me' or 'sorry' is signed by tapping your left and right index fingers together. This is used to get attention or apologize.",
                 "category": "basic_signs",
                 "difficulty": "beginner",
             },
             {
                 "question": "How do I sign 'goodbye' in BSL?",
+                "answer": "In BSL, 'goodbye' is signed by waving your hand up and down. It's a friendly way to end conversations.",
+                "category": "basic_signs",
+                "difficulty": "beginner",
+            },
+            {
+                "question": "How do I sign 'okay' in BSL?",
+                "answer": "In BSL, 'okay' is signed by showing both thumbs up. This is a positive gesture indicating agreement or approval.",
                 "category": "basic_signs",
                 "difficulty": "beginner",
             },
@@ -4481,16 +4640,19 @@ async def get_common_questions():
         "numbers_colors": [
             {
                 "question": "How do I count from 1 to 10 in BSL?",
+                "answer": "In BSL, numbers 1-5 are signed with one hand, and 6-10 with two hands. Each number has a specific hand shape and position. Practice each number individually for accuracy.",
                 "category": "numbers_colors",
                 "difficulty": "beginner",
             },
             {
                 "question": "What are the signs for colors in BSL?",
+                "answer": "Colors in BSL are signed by pointing to different parts of your face or body. For example, 'red' is signed by pointing to your lips, 'blue' by pointing to your eyes, and 'green' by pointing to your nose.",
                 "category": "numbers_colors",
                 "difficulty": "beginner",
             },
             {
                 "question": "How do I sign numbers above 20 in BSL?",
+                "answer": "Numbers above 20 in BSL use a combination of the basic number signs and additional hand movements. For example, 21 is signed as '2' followed by '1' with a slight movement.",
                 "category": "numbers_colors",
                 "difficulty": "intermediate",
             },
@@ -4498,16 +4660,19 @@ async def get_common_questions():
         "family": [
             {
                 "question": "How do I sign family members in BSL?",
+                "answer": "Family members in BSL are signed by pointing to different parts of your face or body. For example, 'mother' is signed by touching your chin, and 'father' by touching your forehead.",
                 "category": "family",
                 "difficulty": "beginner",
             },
             {
                 "question": "What's the sign for 'mother' and 'father' in BSL?",
+                "answer": "'Mother' is signed by touching your chin with your thumb, and 'father' is signed by touching your forehead with your thumb. These signs are based on traditional hat positions.",
                 "category": "family",
                 "difficulty": "beginner",
             },
             {
                 "question": "How do I sign 'sister' and 'brother' in BSL?",
+                "answer": "'Sister' is signed by pointing to your nose with your index finger, and 'brother' is signed by pointing to your ear with your index finger.",
                 "category": "family",
                 "difficulty": "beginner",
             },
@@ -4515,16 +4680,19 @@ async def get_common_questions():
         "grammar": [
             {
                 "question": "How does BSL grammar work?",
+                "answer": "BSL grammar is different from English. It uses topic-comment structure, where you establish the topic first, then comment on it. Facial expressions and body language are also crucial for grammar.",
                 "category": "grammar",
                 "difficulty": "intermediate",
             },
             {
                 "question": "What's the word order in BSL?",
+                "answer": "BSL typically uses the order: Time + Topic + Comment. For example, 'Yesterday, I went to the store' becomes 'Yesterday, store, I went' in BSL.",
                 "category": "grammar",
                 "difficulty": "intermediate",
             },
             {
                 "question": "How do I ask questions in BSL?",
+                "answer": "Questions in BSL are indicated by facial expressions (raised eyebrows for yes/no questions, furrowed brows for wh-questions) and sometimes by signing the question word at the end.",
                 "category": "grammar",
                 "difficulty": "intermediate",
             },
@@ -4532,16 +4700,19 @@ async def get_common_questions():
         "finger_spelling": [
             {
                 "question": "How do I finger spell in BSL?",
+                "answer": "Finger spelling in BSL uses two hands to spell out words letter by letter. Each letter has a specific hand shape. Practice slowly at first, then increase speed.",
                 "category": "finger_spelling",
                 "difficulty": "beginner",
             },
             {
                 "question": "What's the BSL alphabet?",
+                "answer": "The BSL alphabet uses two-handed finger spelling. Each letter has a unique hand shape and position. It's different from American Sign Language (ASL) which uses one hand.",
                 "category": "finger_spelling",
                 "difficulty": "beginner",
             },
             {
                 "question": "When should I use finger spelling?",
+                "answer": "Use finger spelling for names, places, or words that don't have established signs. It's also used for emphasis or clarification. However, try to use established signs when possible.",
                 "category": "finger_spelling",
                 "difficulty": "intermediate",
             },
@@ -4549,16 +4720,19 @@ async def get_common_questions():
         "learning": [
             {
                 "question": "How can I learn BSL effectively?",
+                "answer": "To learn BSL effectively, practice regularly, take formal classes if possible, watch videos, and try to communicate with Deaf people. Start with basic signs and gradually build your vocabulary.",
                 "category": "learning",
                 "difficulty": "beginner",
             },
             {
                 "question": "What are the best BSL learning resources?",
+                "answer": "The best BSL learning resources include formal courses, online platforms like SignBSL, YouTube channels, mobile apps, and practice with native BSL users. Join Deaf community events when possible.",
                 "category": "learning",
                 "difficulty": "beginner",
             },
             {
                 "question": "How long does it take to learn BSL?",
+                "answer": "Learning BSL takes time and varies by individual. Basic communication can take 6-12 months with regular practice, while fluency may take 2-5 years. Consistent practice is key to progress.",
                 "category": "learning",
                 "difficulty": "beginner",
             },
@@ -4566,16 +4740,19 @@ async def get_common_questions():
         "culture": [
             {
                 "question": "What is Deaf culture?",
+                "answer": "Deaf culture is a rich, diverse community with its own language, customs, values, and ways of communicating. It's not defined by hearing loss but by shared experiences and cultural identity.",
                 "category": "culture",
                 "difficulty": "beginner",
             },
             {
                 "question": "What are BSL communication etiquette rules?",
+                "answer": "BSL communication etiquette includes maintaining eye contact, not interrupting, using appropriate facial expressions, respecting personal space, and asking permission before touching someone's hands.",
                 "category": "culture",
                 "difficulty": "intermediate",
             },
             {
                 "question": "What's the history of BSL?",
+                "answer": "BSL has a rich history dating back to the 18th century. It evolved naturally within Deaf communities and was officially recognized as a language in 2003. It has its own grammar and structure distinct from English.",
                 "category": "culture",
                 "difficulty": "intermediate",
             },
@@ -4583,16 +4760,19 @@ async def get_common_questions():
         "accessibility": [
             {
                 "question": "How can I make my business more accessible to deaf people?",
+                "answer": "To make your business accessible to deaf people, provide BSL interpreters, use visual communication methods, train staff in basic BSL, offer written information, and ensure clear visual signage.",
                 "category": "accessibility",
                 "difficulty": "intermediate",
             },
             {
                 "question": "What are the rights of deaf people in the UK?",
+                "answer": "Deaf people in the UK have rights under the Equality Act 2010, including access to reasonable adjustments, BSL interpreters, and equal access to services. The BSL Act 2022 further protects BSL as a language.",
                 "category": "accessibility",
                 "difficulty": "intermediate",
             },
             {
                 "question": "How do I find a BSL interpreter?",
+                "answer": "You can find BSL interpreters through professional organizations like NRCPD, local Deaf organizations, online directories, or by contacting interpreting agencies. Always ensure interpreters are qualified and registered.",
                 "category": "accessibility",
                 "difficulty": "intermediate",
             },

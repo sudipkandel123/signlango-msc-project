@@ -1,28 +1,81 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import './SignDetection.css';
 
 function SignDetection() {
+  // State for sign selection and learning flow
+  const [selectedSign, setSelectedSign] = useState(null);
+  const [learningStep, setLearningStep] = useState('select'); // 'select', 'watch', 'practice', 'result'
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [detectedSign, setDetectedSign] = useState('No sign detected');
-  const [confidence, setConfidence] = useState(0);
-  const [sequenceLength, setSequenceLength] = useState(0);
-  const [predictionsCount, setPredictionsCount] = useState(0);
-  const [sentence, setSentence] = useState([]);
-  const [statusMessage, setStatusMessage] = useState('Click "Start Camera" to begin');
-  const [allProbabilities, setAllProbabilities] = useState([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [detectionResult, setDetectionResult] = useState(null);
   const [cameraError, setCameraError] = useState('');
-  const [showCameraGuide, setShowCameraGuide] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Video and camera refs
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const detectionIntervalRef = useRef(null);
+  const countdownIntervalRef = useRef(null);
 
+  // Available signs with video references
+  const availableSigns = [
+    {
+      id: 'hi',
+      name: 'Hello/Hi',
+      description: 'Wave hand side to side',
+      vidref: 'cnyia0upyj',
+      videoUrl: 'https://www.signbsl.com/sign/hello'
+    },
+    {
+      id: 'please',
+      name: 'Please',
+      description: 'Rub palm in circular motion on chest',
+      vidref: 'f7a1xiefkh',
+      videoUrl: 'https://www.signbsl.com/sign/please'
+    },
+    {
+      id: 'excuse_me',
+      name: 'Excuse Me',
+      description: 'Tap shoulder to get attention',
+      vidref: '26ojajoxrq',
+      videoUrl: 'https://www.signbsl.com/sign/excuse-me'
+    },
+    {
+      id: 'okay',
+      name: 'Okay',
+      description: 'Give a thumbs up gesture',
+      vidref: 'cj1jijzqra',
+      videoUrl: 'https://www.signbsl.com/sign/okay'
+    }
+  ];
+
+  // Load SignBSL widget script
+  useEffect(() => {
+    if (!window.signbsl) {
+      const script = document.createElement('script');
+      script.src = 'https://embed.signbsl.com/widgets.js';
+      script.async = true;
+      script.charset = 'utf-8';
+      
+      script.onload = () => {
+        if (window.signbsl) {
+          window.signbsl.init();
+        }
+      };
+      
+      document.head.appendChild(script);
+    } else {
+      window.signbsl.init();
+    }
+  }, []);
+
+  // Start camera function
   const startCamera = useCallback(async () => {
     try {
       setIsLoading(true);
       setCameraError('');
-      setStatusMessage('Requesting camera permission...');
       
       // Stop any existing stream
       if (streamRef.current) {
@@ -30,7 +83,7 @@ function SignDetection() {
         streamRef.current = null;
       }
 
-      // Request camera with basic constraints
+      // Request camera
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: {
           width: { ideal: 640 },
@@ -45,26 +98,17 @@ function SignDetection() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         
-        // Wait for video to be ready
         videoRef.current.onloadedmetadata = () => {
           videoRef.current.play().then(() => {
             setIsCameraActive(true);
-            setStatusMessage('Camera active - Start signing!');
             console.log('Camera started successfully');
           }).catch((playError) => {
             console.error('Video play error:', playError);
-            // Try to play muted
             videoRef.current.muted = true;
             videoRef.current.play().then(() => {
               setIsCameraActive(true);
-              setStatusMessage('Camera active (muted) - Start signing!');
             });
           });
-        };
-        
-        videoRef.current.onerror = (error) => {
-          console.error('Video error:', error);
-          setCameraError('Video playback error');
         };
       }
     } catch (error) {
@@ -73,29 +117,26 @@ function SignDetection() {
       
       if (error.name === 'NotAllowedError') {
         setCameraError('Camera permission denied. Please allow camera access and try again.');
-        setStatusMessage('Camera access denied');
       } else if (error.name === 'NotFoundError') {
         setCameraError('No camera found. Please connect a camera and try again.');
-        setStatusMessage('No camera found');
-      } else if (error.name === 'NotSupportedError') {
-        setCameraError('Camera not supported. Please use Chrome, Firefox, or Safari.');
-        setStatusMessage('Camera not supported');
-      } else if (error.name === 'NotReadableError') {
-        setCameraError('Camera is in use by another application. Please close other camera apps and try again.');
-        setStatusMessage('Camera in use by another app');
       } else {
         setCameraError(`Camera error: ${error.message}`);
-        setStatusMessage('Camera error');
       }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // Stop camera function
   const stopCamera = useCallback(() => {
     if (detectionIntervalRef.current) {
       clearInterval(detectionIntervalRef.current);
       detectionIntervalRef.current = null;
+    }
+    
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
     }
     
     if (streamRef.current) {
@@ -108,24 +149,40 @@ function SignDetection() {
     }
     
     setIsCameraActive(false);
-    setStatusMessage('Camera stopped - Click "Start Camera" to begin');
+    setIsRecording(false);
+    setCountdown(0);
   }, []);
 
-  const resetDetection = async () => {
-    try {
-      await axios.post('http://localhost:8000/reset-detection');
-      setSentence([]);
-      setPredictionsCount(0);
-      setSequenceLength(0);
-      setDetectedSign('No sign detected');
-      setConfidence(0);
-      setStatusMessage('Detection reset - Start signing!');
-    } catch (error) {
-      console.error('Error resetting detection:', error);
-      setStatusMessage('Reset failed - check connection');
+  // Start practice session
+  const startPractice = async () => {
+    if (!isCameraActive) {
+      await startCamera();
     }
+    
+    setLearningStep('practice');
+    setIsRecording(true);
+    setCountdown(3);
+    
+    // Start countdown
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+          startDetection();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
+  // Start detection
+  const startDetection = () => {
+    detectionIntervalRef.current = setInterval(captureAndDetect, 100);
+  };
+
+  // Capture and detect function
   const captureAndDetect = useCallback(async () => {
     if (!isCameraActive || !videoRef.current || !videoRef.current.videoWidth) {
       return;
@@ -144,37 +201,53 @@ function SignDetection() {
         image: imageData
       });
 
-      const { detected_sign, confidence: conf, sequence_length, predictions_count, sentence: sent, status_message, all_probabilities } = response.data;
+      const { detected_sign, confidence, all_probabilities } = response.data;
       
-      setDetectedSign(detected_sign);
-      setConfidence(conf);
-      setSequenceLength(sequence_length);
-      setPredictionsCount(predictions_count);
-      setSentence(sent);
-      setStatusMessage(status_message);
-      setAllProbabilities(all_probabilities);
-    } catch (error) {
-      console.error('Detection error:', error);
-      setStatusMessage('Detection error - check connection');
-    }
-  }, [isCameraActive]);
-
-  useEffect(() => {
-    if (isCameraActive) {
-      detectionIntervalRef.current = setInterval(captureAndDetect, 100);
-      return () => {
+      // Check if the detected sign matches the selected sign
+      if (detected_sign === selectedSign.id && confidence > 0.7) {
+        // Success! Stop detection and show result
         if (detectionIntervalRef.current) {
           clearInterval(detectionIntervalRef.current);
           detectionIntervalRef.current = null;
         }
-      };
+        
+        setIsRecording(false);
+        setDetectionResult({
+          success: true,
+          detectedSign: detected_sign,
+          confidence: confidence,
+          message: 'Excellent! You signed correctly!'
+        });
+        
+        setLearningStep('result');
+      }
+    } catch (error) {
+      console.error('Detection error:', error);
     }
-  }, [isCameraActive, captureAndDetect]);
+  }, [isCameraActive, selectedSign]);
 
+  // Reset and go back to selection
+  const resetLearning = () => {
+    stopCamera();
+    setSelectedSign(null);
+    setLearningStep('select');
+    setDetectionResult(null);
+  };
+
+  // Try again
+  const tryAgain = () => {
+    setDetectionResult(null);
+    setLearningStep('watch');
+  };
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (detectionIntervalRef.current) {
         clearInterval(detectionIntervalRef.current);
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
       }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -182,216 +255,198 @@ function SignDetection() {
     };
   }, []);
 
+  // Render sign selection screen
+  const renderSignSelection = () => (
+    <div className="sign-selection">
+      <div className="selection-header">
+        <h1>Learn BSL Signs</h1>
+        <p>Choose a sign to learn and practice with real-time feedback</p>
+      </div>
+      
+      <div className="signs-grid">
+        {availableSigns.map((sign) => (
+          <div 
+            key={sign.id} 
+            className="sign-card"
+            onClick={() => {
+              setSelectedSign(sign);
+              setLearningStep('watch');
+            }}
+          >
+            <div className="sign-icon">
+              {sign.id === 'hi' && '👋'}
+              {sign.id === 'please' && '🙏'}
+              {sign.id === 'excuse_me' && '🤚'}
+              {sign.id === 'okay' && '👍'}
+            </div>
+            <h3>{sign.name}</h3>
+            <p>{sign.description}</p>
+            <div className="sign-action">Click to Learn →</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Render video watching screen
+  const renderVideoWatch = () => (
+    <div className="video-watch">
+      <div className="video-header">
+        <button className="back-btn" onClick={() => setLearningStep('select')}>
+          ← Back to Signs
+        </button>
+        <h2>Learn: {selectedSign.name}</h2>
+        <p>{selectedSign.description}</p>
+      </div>
+      
+      <div className="video-container">
+        <div className="video-embed-wrapper">
+          <blockquote 
+            className="signbsldata-embed" 
+            data-vidref={selectedSign.vidref}
+            style={{
+              borderRadius: '10px',
+              border: 'none',
+              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
+              margin: '0',
+              padding: '0'
+            }}
+          >
+            <a href={selectedSign.videoUrl}>
+              Watch how to sign '{selectedSign.name.toLowerCase()}' in British Sign Language
+            </a>
+          </blockquote>
+        </div>
+      </div>
+      
+      <div className="practice-tips">
+        <h3>Practice Tips</h3>
+        <ul>
+          <li>Watch the video carefully and note the hand movements</li>
+          <li>Pay attention to the position and shape of the hands</li>
+          <li>Practice the movement a few times before recording</li>
+          <li>Make sure you have good lighting and clear camera view</li>
+        </ul>
+      </div>
+      
+      <div className="practice-actions">
+        <button 
+          className="btn btn-primary"
+          onClick={startPractice}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Starting Camera...' : 'Start Practice'}
+        </button>
+      </div>
+    </div>
+  );
+
+  // Render practice screen
+  const renderPractice = () => (
+    <div className="practice-screen">
+      <div className="practice-header">
+        <h2>Practice: {selectedSign.name}</h2>
+        <p>Perform the sign when the countdown finishes</p>
+      </div>
+      
+      <div className="camera-section">
+        <div className="camera-container">
+          {isCameraActive ? (
+            <div className="video-wrapper">
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                style={{ 
+                  width: '100%', 
+                  maxWidth: '640px', 
+                  borderRadius: '10px',
+                  border: '2px solid #28a745'
+                }}
+              />
+              {countdown > 0 && (
+                <div className="countdown-overlay">
+                  <div className="countdown-number">{countdown}</div>
+                  <p>Get ready...</p>
+                </div>
+              )}
+              {isRecording && countdown === 0 && (
+                <div className="recording-overlay">
+                  <div className="recording-indicator">● Recording</div>
+                  <p>Perform the sign now!</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="camera-placeholder">
+              <p>Camera not active</p>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div className="practice-controls">
+        <button className="btn btn-warning" onClick={stopCamera}>
+          Stop Camera
+        </button>
+        <button className="btn btn-secondary" onClick={() => setLearningStep('watch')}>
+          Back to Video
+        </button>
+      </div>
+      
+      {cameraError && (
+        <div className="camera-error">
+          <p>{cameraError}</p>
+          <button className="btn btn-primary" onClick={startCamera}>
+            Retry Camera
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  // Render result screen
+  const renderResult = () => (
+    <div className="result-screen">
+      <div className="result-content">
+        {detectionResult.success ? (
+          <div className="success-result">
+            <div className="success-icon">🎉</div>
+            <h2>Excellent!</h2>
+            <p>You signed "{selectedSign.name}" correctly!</p>
+            <div className="result-details">
+              <p><strong>Confidence:</strong> {(detectionResult.confidence * 100).toFixed(1)}%</p>
+            </div>
+          </div>
+        ) : (
+          <div className="failure-result">
+            <div className="failure-icon">😔</div>
+            <h2>Keep Practicing!</h2>
+            <p>Your sign wasn't quite right. Try watching the video again and practice more.</p>
+          </div>
+        )}
+        
+        <div className="result-actions">
+          <button className="btn btn-primary" onClick={tryAgain}>
+            Try Again
+          </button>
+          <button className="btn btn-secondary" onClick={resetLearning}>
+            Learn Another Sign
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Main render
   return (
     <div className="sign-detection">
       <div className="card">
-        <h1>BSL Sign Detection</h1>
-        <p>Use your webcam to practice BSL signs and get real-time feedback!</p>
-        
-        {/* Camera Error Display */}
-        {cameraError && (
-          <div className="camera-error">
-            <h3>Camera Issue</h3>
-            <p>{cameraError}</p>
-            <div className="error-actions">
-              <button onClick={startCamera} className="btn btn-primary" disabled={isLoading}>
-                {isLoading ? 'Loading...' : 'Retry Camera'}
-              </button>
-              <button onClick={() => setShowCameraGuide(!showCameraGuide)} className="btn btn-secondary">
-                Show Camera Guide
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Camera Guide */}
-        {showCameraGuide && (
-          <div className="camera-guide">
-            <h3>Camera Setup Guide</h3>
-            <div className="guide-content">
-              <h4>Browser Compatibility:</h4>
-              <ul>
-                <li>Chrome (recommended)</li>
-                <li>Firefox</li>
-                <li>Safari</li>
-                <li>Not supported: Internet Explorer</li>
-              </ul>
-              
-              <h4>Troubleshooting:</h4>
-              <ul>
-                <li>Make sure your camera is connected and working</li>
-                <li>Close other applications using the camera</li>
-                <li>Check browser settings for camera permissions</li>
-                <li>Try refreshing the page after allowing permissions</li>
-                <li>Ensure you're using HTTPS or localhost</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        <div className="camera-section">
-          <div className="camera-container">
-            {isCameraActive ? (
-              <div style={{ position: 'relative' }}>
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  style={{ 
-                    width: '100%', 
-                    maxWidth: '640px', 
-                    borderRadius: '10px',
-                    border: '2px solid #28a745',
-                    display: 'block'
-                  }}
-                />
-                <div style={{
-                  position: 'absolute',
-                  top: '10px',
-                  left: '10px',
-                  background: 'rgba(0,0,0,0.7)',
-                  color: 'white',
-                  padding: '5px 10px',
-                  borderRadius: '5px',
-                  fontSize: '12px'
-                }}>
-                  Camera Active
-                </div>
-              </div>
-            ) : (
-              <div className="camera-placeholder">
-                <div className="placeholder-content">
-                  <div className="camera-icon">Camera</div>
-                  <h3>Camera Not Active</h3>
-                  <p>Click "Start Camera" to begin sign detection</p>
-                  <button 
-                    onClick={startCamera} 
-                    className="btn btn-primary" 
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Starting...' : 'Start Camera'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="camera-controls">
-            <div className="camera-status">
-              <span className="status-indicator">
-                Camera {isCameraActive ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-            
-            {isCameraActive && (
-              <button onClick={stopCamera} className="btn btn-warning">
-                Stop Camera
-              </button>
-            )}
-            
-            <button onClick={resetDetection} className="btn btn-secondary">
-              Reset Detection
-            </button>
-          </div>
-        </div>
-
-        <div className="detection-info">
-          <div className="info-grid">
-            <div className="info-item">
-              <h4>Status</h4>
-              <p>{statusMessage}</p>
-            </div>
-            <div className="info-item">
-              <h4>Detected Sign</h4>
-              <p className="detected-sign">{detectedSign}</p>
-            </div>
-            <div className="info-item">
-              <h4>Confidence</h4>
-              <p className="confidence">{(confidence * 100).toFixed(1)}%</p>
-            </div>
-            <div className="info-item">
-              <h4>Sequence Length</h4>
-              <p>{sequenceLength}/30 frames</p>
-            </div>
-            <div className="info-item">
-              <h4>Predictions</h4>
-              <p>{predictionsCount}</p>
-            </div>
-          </div>
-
-          <div className="progress-bar">
-            <div 
-              className="progress-fill" 
-              style={{ width: `${(sequenceLength / 30) * 100}%` }}
-            ></div>
-          </div>
-
-          {sentence.length > 0 && (
-            <div className="sentence-display">
-              <h4>Detected Signs:</h4>
-              <div className="signs-list">
-                {sentence.map((sign, index) => (
-                  <span key={index} className="sign-tag">{sign}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {allProbabilities.length > 0 && (
-            <div className="probability-bars">
-              <h4>Sign Probabilities:</h4>
-              {allProbabilities.map((prob, index) => {
-                const signs = ['hi', 'please', 'excuse_me', 'okay'];
-                return (
-                  <div key={index} className="probability-bar-item">
-                    <span className="probability-label">{signs[index]}:</span>
-                    <div className="probability-bar">
-                      <div 
-                        className="probability-fill" 
-                        style={{ width: `${prob * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="probability-value">{(prob * 100).toFixed(1)}%</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="detection-instructions">
-          <h3>How to Use Sign Detection</h3>
-          <div className="sign-examples">
-            <h4>Supported Signs:</h4>
-            <div className="sign-examples-grid">
-              <div className="sign-example">
-                <strong>Hello/Hi:</strong> Wave hand side to side
-              </div>
-              <div className="sign-example">
-                <strong>Please:</strong> Rub palm in circular motion on chest
-              </div>
-              <div className="sign-example">
-                <strong>Excuse Me:</strong> Tap shoulder to get attention
-              </div>
-              <div className="sign-example">
-                <strong>Okay:</strong> Give a thumbs up gesture
-              </div>
-            </div>
-          </div>
-          
-          <div className="usage-tips">
-            <h4>Tips for Best Results:</h4>
-            <ul>
-              <li>Ensure good lighting on your hands and face</li>
-              <li>Keep your hands clearly visible to the camera</li>
-              <li>Hold each sign for a few seconds</li>
-              <li>Make sure your full upper body is in frame</li>
-              <li>Practice the signs from the Videos page first</li>
-              <li>Wait for 30 frames to be collected before detection starts</li>
-            </ul>
-          </div>
-        </div>
+        {learningStep === 'select' && renderSignSelection()}
+        {learningStep === 'watch' && renderVideoWatch()}
+        {learningStep === 'practice' && renderPractice()}
+        {learningStep === 'result' && renderResult()}
       </div>
     </div>
   );

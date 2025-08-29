@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BSL Learning - SignLango</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .practice-area {
+            margin: 30px 0;
+        }
+
+        .demo-video {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px dashed #dee2e6;
+        }
+
+        .demo-video h3 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .video-placeholder {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 1.2rem;
+        }
+
+        .recording-area {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #dee2e6;
+            transition: all 0.3s ease;
+        }
+
+        .recording-area.recording {
+            border-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .recording-area h3 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .webcam-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        #webcam {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+        }
+
+        .recording-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: none;
+        }
+
+        .recording-overlay.visible {
+            display: block;
+        }
+
+        .controls {
+            margin: 20px 0;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+        }
+
+        .btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.danger {
+            background: #dc3545;
+        }
+
+        .btn.danger:hover {
+            background: #c82333;
+        }
+
+        .btn.success {
+            background: #28a745;
+        }
+
+        .btn.success:hover {
+            background: #218838;
+        }
+
+        .feedback {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: none;
+        }
+
+        .feedback.correct {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .feedback.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .feedback.error {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .progress {
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: #667eea;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status {
+            margin: 10px 0;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .sign-selector {
+            margin: 20px 0;
+        }
+
+        .sign-selector select {
+            padding: 10px 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+        }
+
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤟 BSL Learning</h1>
+            <p>Practice British Sign Language with AI feedback</p>
+        </div>
+
+        <div class="sign-selector">
+            <label for="targetSign">Choose a sign to practice:</label>
+            <select id="targetSign">
+                <option value="Hello">Hello</option>
+                <option value="Excuse">Excuse</option>
+                <option value="Please">Please</option>
+                <option value="Okay">Okay</option>
+            </select>
+        </div>
+
+        <div class="practice-area">
+            <div class="demo-video">
+                <h3>📹 Watch the Demo</h3>
+                <div class="video-placeholder" id="demoPlaceholder">
+                    Click "Start Practice" to begin
+                </div>
+            </div>
+
+            <div class="recording-area" id="recordingArea">
+                <h3>📱 Your Turn</h3>
+                <div class="webcam-container">
+                    <video id="webcam" autoplay muted></video>
+                    <div class="recording-overlay" id="recordingOverlay">
+                        🔴 Recording...
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="status" id="status">Ready to start</div>
+            </div>
+
+            <div class="controls">
+                <button class="btn" id="startBtn">Start Practice</button>
+                <button class="btn danger hidden" id="stopBtn">Stop Recording</button>
+                <button class="btn success hidden" id="retryBtn">Try Again</button>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing your sign...</p>
+            </div>
+
+            <div class="feedback" id="feedback"></div>
+        </div>
+    </div>
+
+    <script>
+        class BSLPractice {
+            constructor() {
+                this.stream = null;
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+                this.isRecording = false;
+                this.targetSign = 'Hello';
+                
+                this.initializeElements();
+                this.bindEvents();
+            }
+
+            initializeElements() {
+                this.startBtn = document.getElementById('startBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.retryBtn = document.getElementById('retryBtn');
+                this.webcam = document.getElementById('webcam');
+                this.recordingArea = document.getElementById('recordingArea');
+                this.recordingOverlay = document.getElementById('recordingOverlay');
+                this.progressFill = document.getElementById('progressFill');
+                this.status = document.getElementById('status');
+                this.loading = document.getElementById('loading');
+                this.feedback = document.getElementById('feedback');
+                this.targetSignSelect = document.getElementById('targetSign');
+            }
+
+            bindEvents() {
+                this.startBtn.addEventListener('click', () => this.startPractice());
+                this.stopBtn.addEventListener('click', () => this.stopRecording());
+                this.retryBtn.addEventListener('click', () => this.resetPractice());
+                this.targetSignSelect.addEventListener('change', (e) => {
+                    this.targetSign = e.target.value;
+                });
+            }
+
+            async startPractice() {
+                try {
+                    this.updateStatus('Setting up camera...');
+                    await this.setupCamera();
+                    
+                    this.updateStatus('Camera ready! Click "Start Practice" to begin');
+                    this.startBtn.textContent = 'Start Practice';
+                    this.startBtn.onclick = () => this.beginRecording();
+                    
+                } catch (error) {
+                    this.showFeedback('Please allow camera access to practice', 'error');
+                    console.error('Camera setup failed:', error);
+                }
+            }
+
+            async setupCamera() {
+                this.stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480 },
+                    audio: false
+                });
+                this.webcam.srcObject = this.stream;
+            }
+
+            async beginRecording() {
+                this.targetSign = this.targetSignSelect.value;
+                this.updateStatus(`Practice: ${this.targetSign}`);
+                
+                // Show demo instruction
+                document.getElementById('demoPlaceholder').innerHTML = 
+                    `Watch and copy the sign for: <strong>${this.targetSign}</strong><br>
+                     <small>Recording will start in 3 seconds...</small>`;
+                
+                // Wait 3 seconds
+                await this.delay(3000);
+                
+                this.startRecording();
+            }
+
+            startRecording() {
+                if (!this.stream) {
+                    this.showFeedback('Camera not available', 'error');
+                    return;
+                }
+
+                this.recordedChunks = [];
+                this.isRecording = true;
+                
+                // Update UI
+                this.recordingArea.classList.add('recording');
+                this.recordingOverlay.classList.add('visible');
+                this.startBtn.classList.add('hidden');
+                this.stopBtn.classList.remove('hidden');
+                
+                // Start recording
+                this.mediaRecorder = new MediaRecorder(this.stream, {
+                    mimeType: 'video/webm;codecs=vp9'
+                });
+                
+                this.mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        this.recordedChunks.push(event.data);
+                    }
+                };
+                
+                this.mediaRecorder.onstop = () => this.processRecording();
+                
+                this.mediaRecorder.start();
+                this.updateStatus('Recording... Show your sign!');
+                
+                // Auto-stop after 3 seconds
+                setTimeout(() => {
+                    if (this.isRecording) {
+                        this.stopRecording();
+                    }
+                }, 3000);
+                
+                // Update progress bar
+                this.updateProgress(0);
+                const progressInterval = setInterval(() => {
+                    if (!this.isRecording) {
+                        clearInterval(progressInterval);
+                        return;
+                    }
+                    const progress = (Date.now() - this.mediaRecorder.startTime) / 3000 * 100;
+                    this.updateProgress(Math.min(progress, 100));
+                }, 100);
+            }
+
+            stopRecording() {
+                if (!this.isRecording) return;
+                
+                this.isRecording = false;
+                this.mediaRecorder.stop();
+                
+                // Update UI
+                this.recordingArea.classList.remove('recording');
+                this.recordingOverlay.classList.remove('visible');
+                this.stopBtn.classList.add('hidden');
+                this.loading.classList.remove('hidden');
+                
+                this.updateStatus('Processing your sign...');
+            }
+
+            async processRecording() {
+                try {
+                    const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+                    
+                    // Convert to MP4 format for better compatibility
+                    const formData = new FormData();
+                    formData.append('video', blob, 'practice.webm');
+                    formData.append('target_sign', this.targetSign);
+                    
+                    const response = await fetch('/upload-video', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.showResult(result);
+                    } else {
+                        this.showFeedback(`Error: ${result.error}`, 'error');
+                    }
+                    
+                } catch (error) {
+                    this.showFeedback('Failed to process video', 'error');
+                    console.error('Processing failed:', error);
+                } finally {
+                    this.loading.classList.add('hidden');
+                    this.retryBtn.classList.remove('hidden');
+                }
+            }
+
+            showResult(result) {
+                if (result.is_correct) {
+                    this.showFeedback(`🎉 Correct! You signed "${result.prediction}" perfectly!`, 'correct');
+                    this.updateStatus('Great job! Try another sign or practice again.');
+                } else {
+                    this.showFeedback(`Try again! You signed "${result.prediction}" but we were looking for "${result.target_sign}"`, 'incorrect');
+                    this.updateStatus('Keep practicing!');
+                }
+            }
+
+            showFeedback(message, type) {
+                this.feedback.textContent = message;
+                this.feedback.className = `feedback ${type}`;
+                this.feedback.style.display = 'block';
+            }
+
+            resetPractice() {
+                // Reset UI
+                this.recordingArea.classList.remove('recording');
+                this.recordingOverlay.classList.remove('visible');
+                this.startBtn.classList.remove('hidden');
+                this.stopBtn.classList.add('hidden');
+                this.retryBtn.classList.add('hidden');
+                this.loading.classList.add('hidden');
+                this.feedback.style.display = 'none';
+                this.updateProgress(0);
+                this.updateStatus('Ready to practice again');
+                
+                // Reset demo placeholder
+                document.getElementById('demoPlaceholder').innerHTML = 'Click "Start Practice" to begin';
+            }
+
+            updateStatus(message) {
+                this.status.textContent = message;
+            }
+
+            updateProgress(percentage) {
+                this.progressFill.style.width = `${percentage}%`;
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Initialize the app when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new BSLPractice();
+        });
+    </script>
+</body>
+</html> 
