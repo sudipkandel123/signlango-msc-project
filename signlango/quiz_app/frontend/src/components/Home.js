@@ -35,9 +35,9 @@ function Home() {
         </div>
         
         <div className="feature-card">
-          <h3>Sign Detection</h3>
-          <p>Use your webcam to practice signs and get real-time feedback.</p>
-          <Link to="/sign-detection" className="btn">Start Detection</Link>
+          <h3>AI Detection</h3>
+          <p>Use your webcam to practice signs and get real-time AI feedback.</p>
+          <Link to="/ai-detection" className="btn">Start AI Detection</Link>
         </div>
         
         <div className="feature-card">
