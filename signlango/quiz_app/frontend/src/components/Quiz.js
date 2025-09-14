@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import config from '../config';
 import './Quiz.css';
 
 function Quiz() {
@@ -58,7 +59,7 @@ function Quiz() {
   const fetchQuestions = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:8000/quiz?category=${selectedCategory}&difficulty=${difficulty}`);
+      const response = await axios.get(`${config.API_BASE_URL}${config.API_ENDPOINTS.QUIZ}?category=${selectedCategory}&difficulty=${difficulty}`);
       const quizData = response.data.questions || response.data;
       setQuestions(quizData);
       setError(null);

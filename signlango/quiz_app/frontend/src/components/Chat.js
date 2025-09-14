@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config';
 
 function Chat() {
   const [messages, setMessages] = useState([]);
@@ -54,7 +55,7 @@ function Chat() {
 
   const loadCommonQuestions = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/common-questions');
+      const response = await axios.get(`${config.API_BASE_URL}${config.API_ENDPOINTS.COMMON_QUESTIONS}`);
       setCommonQuestions(response.data.questions);
     } catch (error) {
       console.error('Error loading common questions:', error);
@@ -78,7 +79,7 @@ function Chat() {
 
     try {
       // Use the enhanced chat endpoint that can handle image generation
-      const response = await axios.post('http://localhost:8000/chat-with-image', {
+      const response = await axios.post(`${config.API_BASE_URL}/chat-with-image`, {
         message: input,
         type: chatMode
       });
@@ -124,7 +125,7 @@ function Chat() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8000/chat-with-image', {
+      const response = await axios.post(`${config.API_BASE_URL}/chat-with-image`, {
         message: question,
         type: chatMode
       });

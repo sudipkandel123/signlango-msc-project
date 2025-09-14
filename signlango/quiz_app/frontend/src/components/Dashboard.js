@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -34,7 +35,7 @@ function Dashboard() {
         
         // Fetch facts
         try {
-          const factsResponse = await axios.get('http://localhost:8000/facts');
+          const factsResponse = await axios.get(`${config.API_BASE_URL}${config.API_ENDPOINTS.FACTS}`);
           setFacts(factsResponse.data.facts || []);
         } catch (error) {
           console.error('Error fetching facts:', error);
@@ -43,7 +44,7 @@ function Dashboard() {
         
         // Fetch quiz data
         try {
-          const quizResponse = await axios.get('http://localhost:8000/quiz');
+          const quizResponse = await axios.get(`${config.API_BASE_URL}${config.API_ENDPOINTS.QUIZ}`);
           setQuizData(quizResponse.data.questions || []);
         } catch (error) {
           console.error('Error fetching quiz data:', error);
@@ -52,7 +53,7 @@ function Dashboard() {
         
         // Fetch chat suggestions
         try {
-          const suggestionsResponse = await axios.get('http://localhost:8000/chat-suggestions');
+          const suggestionsResponse = await axios.get(`${config.API_BASE_URL}${config.API_ENDPOINTS.CHAT_SUGGESTIONS}`);
           setChatSuggestions(suggestionsResponse.data.suggestions || []);
         } catch (error) {
           console.error('Error fetching chat suggestions:', error);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config';
 import './Facts.css';
 
 function Facts() {
@@ -11,7 +12,7 @@ function Facts() {
     const fetchFacts = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:8000/facts');
+        const response = await axios.get(`${config.API_BASE_URL}${config.API_ENDPOINTS.FACTS}`);
         // Handle the response format where data is wrapped in 'facts' property
         const factsData = response.data.facts || response.data;
         setFacts(factsData);

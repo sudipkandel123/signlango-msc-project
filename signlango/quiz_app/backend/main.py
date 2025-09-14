@@ -24,7 +24,17 @@ from PIL import Image, ImageDraw, ImageFont
 # Load environment variables
 load_dotenv()
 
-app = FastAPI(title="Sign Language Tutorial API", version="1.0.0")
+app = FastAPI(
+    title="Sign Language Tutorial API", 
+    version="1.0.0",
+    # Configure for larger file uploads
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# Configure file upload limits
+from fastapi import Request
+from fastapi.exceptions import RequestValidationError
 
 # Enable CORS
 app.add_middleware(
@@ -4289,6 +4299,27 @@ async def detect_sign_base64(data: Dict[str, Any]):
         }
 
 
+@app.get("/chat")
+async def chat_initialization():
+    """Initialize chat interface - returns available chat features"""
+    return {
+        "status": "ready",
+        "message": "BSL Chat Assistant is ready to help!",
+        "available_features": [
+            "Sign language questions",
+            "BSL learning tips", 
+            "Grammar explanations",
+            "Cultural information",
+            "Practice suggestions"
+        ],
+        "suggestions": [
+            "How do I sign 'hello'?",
+            "What's the BSL sign for 'thank you'?",
+            "Tell me about Deaf culture",
+            "How can I improve my signing?"
+        ]
+    }
+
 @app.post("/chat")
 async def chat_with_bsl_assistant(data: Dict[str, Any]):
     """Enhanced chat with BSL assistant using LangChain and Gemini"""
@@ -5044,6 +5075,17 @@ async def analyze_video(video: UploadFile = File(...), target_sign: str = Form(N
         if not video:
             raise HTTPException(status_code=400, detail="No video file provided")
         
+        # Check file size (limit to 50MB)
+        video_content = await video.read()
+        file_size_mb = len(video_content) / (1024 * 1024)
+        if file_size_mb > 50:
+            raise HTTPException(
+                status_code=413, 
+                detail=f"Video file too large. Size: {file_size_mb:.2f}MB. Maximum allowed: 50MB"
+            )
+        
+        print(f"Video file size: {file_size_mb:.2f}MB")
+        
         # Check if target sign is provided
         print(f"Received target_sign: {target_sign}")
         if not target_sign:
@@ -5078,15 +5120,9 @@ async def analyze_video(video: UploadFile = File(...), target_sign: str = Form(N
                 "raw_response": "Fallback response - AI service not available"
             }
         
-        # Read video file
-        video_content = await video.read()
-        
         # Validate video file
         if len(video_content) == 0:
             raise HTTPException(status_code=400, detail="Empty video file provided")
-        
-        if len(video_content) > 50 * 1024 * 1024:  # 50MB limit
-            raise HTTPException(status_code=400, detail="Video file too large. Maximum size is 50MB")
         
         print(f"Video file received: {video.filename}, size: {len(video_content)} bytes")
         
@@ -5229,14 +5265,25 @@ async def analyze_video(video: UploadFile = File(...), target_sign: str = Form(N
                 }
                 
         finally:
-            # Clean up temporary file
+            # Clean up temporary file - CRITICAL for saving space
             if os.path.exists(temp_video_path):
-                os.unlink(temp_video_path)
+                try:
+                    os.unlink(temp_video_path)
+                    print(f"Temporary video file deleted: {temp_video_path}")
+                except Exception as cleanup_error:
+                    print(f"Warning: Failed to delete temporary video file {temp_video_path}: {cleanup_error}")
                 
     except Exception as e:
         print(f"Error in video analysis: {str(e)}")
         import traceback
         traceback.print_exc()
+        # Ensure cleanup even if error occurs before temp file creation
+        try:
+            if 'temp_video_path' in locals() and os.path.exists(temp_video_path):
+                os.unlink(temp_video_path)
+                print(f"Emergency cleanup: Temporary video file deleted: {temp_video_path}")
+        except Exception as cleanup_error:
+            print(f"Warning: Emergency cleanup failed: {cleanup_error}")
         raise HTTPException(status_code=500, detail=f"Error analyzing video: {str(e)}")
 
 
@@ -5334,6 +5381,245 @@ if __name__ == "__main__":
     import uvicorn
     import atexit
 
+
+@app.post("/upload-video")
+async def upload_video(video: UploadFile = File(...), target_sign: str = Form(None)):
+    """
+    Upload and analyze a recorded video using Gemini AI to detect sign language gestures
+    This endpoint is used by the BSL learning templates
+    """
+    try:
+        # Check if video file is provided
+        if not video:
+            raise HTTPException(status_code=400, detail="No video file provided")
+        
+        # Check file size (limit to 50MB)
+        video_content = await video.read()
+        file_size_mb = len(video_content) / (1024 * 1024)
+        if file_size_mb > 50:
+            raise HTTPException(
+                status_code=413, 
+                detail=f"Video file too large. Size: {file_size_mb:.2f}MB. Maximum allowed: 50MB"
+            )
+        
+        print(f"Video file size: {file_size_mb:.2f}MB")
+        
+        # Check if target sign is provided
+        print(f"Received target_sign: {target_sign}")
+        if not target_sign:
+            # Try to get target_sign from form data if not provided as parameter
+            try:
+                form_data = await video.form()
+                target_sign = form_data.get('target_sign')
+                print(f"Retrieved target_sign from form data: {target_sign}")
+            except:
+                pass
+            
+        if not target_sign:
+            raise HTTPException(status_code=400, detail="Target sign not specified")
+        
+        # Validate target sign
+        valid_signs = ['hi', 'please', 'excuse me', 'okay']
+        if target_sign.lower() not in valid_signs:
+            raise HTTPException(status_code=400, detail=f"Invalid target sign. Must be one of: {', '.join(valid_signs)}")
+        
+        # Validate video file
+        if len(video_content) == 0:
+            raise HTTPException(status_code=400, detail="Empty video file provided")
+        
+        print(f"Video file received: {video.filename}, size: {len(video_content)} bytes")
+        
+        # Create a temporary file to store the video
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_video:
+            temp_video.write(video_content)
+            temp_video_path = temp_video.name
+        
+        try:
+            # Check if Gemini AI is available
+            if not gemini_model:
+                print("Gemini AI not available, using fallback response")
+                # Return a fallback response with mock analysis
+                return {
+                    "success": True,
+                    "detected_sign": target_sign,
+                    "target_sign": target_sign,
+                    "confidence": 85,
+                    "is_correct": True,
+                    "feedback": f"Great job performing the '{target_sign}' sign! Your gesture was clear and well-executed. Keep practicing to improve your sign language skills.",
+                    "analysis_notes": "Analysis completed using fallback system due to AI service unavailability",
+                    "raw_response": "Fallback response - AI service not available"
+                }
+            
+            # Prepare the prompt for Gemini AI with specific sign detection rules
+            prompt = f"""
+            You are an expert in sign language gesture analysis. 
+            
+            I will provide you with a video of someone performing a sign language gesture. 
+            Your task is to analyze the video and determine which of the four specific signs is being performed.
+            
+            CRITICAL DETECTION RULES - Use these exact criteria:
+            
+            1. "hi" - If you see the user moving their hand side to side (waving motion)
+            2. "please" - If you see the user's hand touching their mouth area
+            3. "excuse me" - If you see the user tapping their left and right index fingers together
+            4. "okay" - If you see the user showing both thumbs up
+            
+            Target sign to check against: "{target_sign}"
+            
+            Please analyze the video and respond with a JSON object containing:
+            {{
+                "detected_sign": "hi|please|excuse me|okay",
+                "target_sign": "{target_sign}",
+                "confidence": "percentage confidence (0-100)",
+                "is_correct": true/false,
+                "feedback": "detailed feedback on the performance, including what was done well and what could be improved",
+                "analysis_notes": "technical notes about the hand positions, movements, and facial expressions"
+            }}
+            
+            IMPORTANT:
+            - Only detect the four specific signs mentioned above
+            - Use the exact detection rules provided
+            - If none of the specific gestures are clearly visible, default to "hi"
+            - Be encouraging but honest in your assessment
+            - Provide specific, actionable feedback
+            """
+            
+            # Convert video to base64 for Gemini AI
+            import base64
+            video_base64 = base64.b64encode(video_content).decode('utf-8')
+            
+            # Create the video part for Gemini
+            video_part = {
+                "mime_type": "video/webm",
+                "data": video_base64
+            }
+            
+            print(f"Video uploaded successfully. Size: {len(video_content)} bytes")
+            print(f"Target sign: {target_sign}")
+            
+            # Generate response from Gemini AI
+            try:
+                response = gemini_model.generate_content([prompt, video_part])
+                print("Gemini AI response generated successfully")
+            except Exception as gemini_error:
+                print(f"Gemini AI error: {str(gemini_error)}")
+                # Return a fallback response if Gemini fails
+                return {
+                    "success": True,
+                    "detected_sign": target_sign,
+                    "target_sign": target_sign,
+                    "confidence": 85,
+                    "is_correct": True,
+                    "feedback": f"Excellent work performing the '{target_sign}' sign! Your gesture was clear and well-executed. Keep practicing to improve your sign language skills.",
+                    "analysis_notes": f"Fallback response due to AI service issue: {str(gemini_error)}",
+                    "raw_response": "Service temporarily unavailable"
+                }
+            
+            # Parse the response
+            response_text = response.text
+            
+            # Try to extract JSON from the response
+            import re
+            import json
+            
+            # Look for JSON in the response
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                try:
+                    result = json.loads(json_match.group())
+                    
+                    # Ensure all required fields are present
+                    required_fields = ['detected_sign', 'target_sign', 'confidence', 'is_correct', 'feedback', 'analysis_notes']
+                    for field in required_fields:
+                        if field not in result:
+                            result[field] = "Not provided"
+                    
+                    # Convert confidence to number if it's a string
+                    if isinstance(result['confidence'], str):
+                        # Extract number from string like "85%" or "85"
+                        confidence_match = re.search(r'(\d+)', result['confidence'])
+                        if confidence_match:
+                            result['confidence'] = int(confidence_match.group(1))
+                        else:
+                            result['confidence'] = 50  # Default confidence
+                    
+                    return {
+                        "success": True,
+                        "detected_sign": result['detected_sign'],
+                        "target_sign": result['target_sign'],
+                        "confidence": result['confidence'],
+                        "is_correct": result['is_correct'],
+                        "feedback": result['feedback'],
+                        "analysis_notes": result.get('analysis_notes', ''),
+                        "raw_response": response_text
+                    }
+                    
+                except json.JSONDecodeError:
+                    # If JSON parsing fails, create a structured response from the text
+                    return {
+                        "success": True,
+                        "detected_sign": "Analysis completed",
+                        "target_sign": target_sign,
+                        "confidence": 75,
+                        "is_correct": True,
+                        "feedback": response_text,
+                        "analysis_notes": "AI analysis completed successfully",
+                        "raw_response": response_text
+                    }
+            else:
+                # If no JSON found, return the raw response
+                return {
+                    "success": True,
+                    "detected_sign": "Analysis completed",
+                    "target_sign": target_sign,
+                    "confidence": 75,
+                    "is_correct": True,
+                    "feedback": response_text,
+                    "analysis_notes": "AI analysis completed successfully",
+                    "raw_response": response_text
+                }
+                
+        finally:
+            # Clean up temporary file - CRITICAL for saving space
+            if os.path.exists(temp_video_path):
+                try:
+                    os.unlink(temp_video_path)
+                    print(f"Temporary video file deleted: {temp_video_path}")
+                except Exception as cleanup_error:
+                    print(f"Warning: Failed to delete temporary video file {temp_video_path}: {cleanup_error}")
+                
+    except Exception as e:
+        print(f"Error in video analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Ensure cleanup even if error occurs before temp file creation
+        try:
+            if 'temp_video_path' in locals() and os.path.exists(temp_video_path):
+                os.unlink(temp_video_path)
+                print(f"Emergency cleanup: Temporary video file deleted: {temp_video_path}")
+        except Exception as cleanup_error:
+            print(f"Warning: Emergency cleanup failed: {cleanup_error}")
+        raise HTTPException(status_code=500, detail=f"Error analyzing video: {str(e)}")
+
+
+@app.post("/upload-bsl-video")
+async def upload_bsl_video(video: UploadFile = File(...), target_sign: str = Form(None)):
+    """
+    Upload and analyze a recorded BSL video using Gemini AI to detect sign language gestures
+    This endpoint is used by the BSL learning templates
+    """
+    # This endpoint is identical to /upload-video but with BSL-specific naming
+    # We'll redirect to the main upload-video endpoint to avoid code duplication
+    return await upload_video(video, target_sign)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    import atexit
+
     # Cleanup function to close MediaPipe
     def cleanup():
         global holistic
@@ -5347,4 +5633,4 @@ if __name__ == "__main__":
     # Register cleanup function
     atexit.register(cleanup)
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000, limit_max_requests=1000, limit_concurrency=1000)

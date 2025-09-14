@@ -1,5 +1,5 @@
-# Multi-stage build for faster builds
-FROM python:3.11-slim as base
+plly # Multi-stage build for faster builds
+FROM python:3.11-slim AS base
 
 # Set working directory
 WORKDIR /app

@@ -1,0 +1,16 @@
+<step title="Incoming Request" date="2025-09-10T19:35:14.658" instance="3c5a61" url="/logstream" method="GET" type="request" pid="770,1,5" Host="signlango-backend.scm.azurewebsites.net" User-Agent="AZURECLI/2.77.0 (HOMEBREW)" Accept-Encoding="identity" Authorization="Bea..." x-ms-client-request-id="e9063b3c-8e7c-11f0-a3bc-ceb9eeac7e94" X-ARR-LOG-ID="e9063b3c-8e7c-11f0-a3bc-ceb9eeac7e94" CLIENT-IP="78.148.216.98:60612" X-SITE-DEPLOYMENT-ID="signlango-backend" WAS-DEFAULT-HOSTNAME="signlango-backend.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/logstream" X-Client-IP="78.148.216.98" X-Client-Port="60612" >
+  <step title="LogStreamHandlerMiddleware.Invoke" date="2025-09-10T19:35:14.671" /><!-- duration: 48ms -->
+  <step title="Error occurred" date="2025-09-10T19:35:14.858" type="error" text="Could not find a part of the path &apos;/appsvctmp/volatile/logs/runtime&apos;." stackTrace="   at System.IO.Enumeration.FileSystemEnumerator`1.CreateDirectoryHandle(String path, Boolean ignoreNotFound)
+   at System.IO.Enumeration.FileSystemEnumerator`1.Init()
+   at System.IO.Enumeration.FileSystemEnumerable`1..ctor(String directory, FindTransform transform, EnumerationOptions options, Boolean isNormalized)
+   at System.IO.Enumeration.FileSystemEnumerableFactory.UserFiles(String directory, String expression, EnumerationOptions options)
+   at System.IO.Directory.InternalEnumeratePaths(String path, String searchPattern, SearchTarget searchTarget, EnumerationOptions options)
+   at System.IO.Directory.GetFiles(String path, String searchPattern, EnumerationOptions enumerationOptions)
+   at Kudu.Services.Performance.LogStreamManager.GetFiles(String path, String ext) in /tmp/KuduLite/Kudu.Services/Diagnostics/LogStreamManager.cs:line 263
+   at Kudu.Services.Performance.LogStreamManager.Initialize(String path, HttpContext context) in /tmp/KuduLite/Kudu.Services/Diagnostics/LogStreamManager.cs:line 311
+   at Kudu.Services.Performance.LogStreamManager.ProcessRequest(HttpContext context) in /tmp/KuduLite/Kudu.Services/Diagnostics/LogStreamManager.cs:line 123
+   at Microsoft.AspNetCore.Builder.Extensions.MapMiddleware.InvokeCore(HttpContext context, PathString matchedPath, PathString remainingPath)
+   at Kudu.Services.Web.Tracing.TraceMiddleware.Invoke(HttpContext context) in /tmp/KuduLite/Kudu.Services.Web/Tracing/TraceMiddleware.cs:line 101" /><!-- duration: 16ms -->
+  <step title="LogStreamManager: Dispose() called" date="2025-09-10T19:35:15.021" /><!-- duration: 12ms -->
+  <step title="Error occurred" date="2025-09-10T19:35:15.041" type="error" text="LogStreamManager: Inside Reset" /><!-- duration: 9ms -->
+  <step title="LogStreamManager: Dispose() done" date="2025-09-10T19:35:15.088" /><!-- duration: 4ms -->

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import config from '../config';
 import './SignDetection.css';
 
 function SignDetection() {
@@ -197,7 +198,7 @@ function SignDetection() {
       
       const imageData = canvas.toDataURL('image/jpeg', 0.8);
       
-      const response = await axios.post('http://localhost:8000/detect-sign-base64', {
+      const response = await axios.post(`${config.API_BASE_URL}${config.API_ENDPOINTS.DETECT}`, {
         image: imageData
       });
 

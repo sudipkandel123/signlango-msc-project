@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config';
 import './VideoRecording.css';
 
 const VideoRecording = () => {
@@ -157,7 +158,7 @@ const VideoRecording = () => {
 
       console.log('Sending request to analyze video for sign:', selectedSign);
 
-      const result = await axios.post('/api/analyze-video', formData, {
+      const result = await axios.post(`${config.API_BASE_URL}${config.API_ENDPOINTS.ANALYZE_VIDEO}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
